@@ -121,7 +121,8 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         loss_traj.append(loss.item())
 
         # Invoke callback if specified and if epoch matches the frequency
-        if callback is not None and (ep + 1) % callback_freq == 0:
+        if callback is not None and \
+            ((ep + 1) % callback_freq == 0 or ep == nepochs - 1 or ep == 0):
             callback(epoch=ep + 1, loss=loss.item(), model=score_model_td)
         
     return score_model_td, loss_traj
