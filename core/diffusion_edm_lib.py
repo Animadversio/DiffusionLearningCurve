@@ -78,7 +78,26 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
                    lr=0.005,
                    nepochs=750,
                    batch_size=None,
-                   device="cpu"):
+                   device="cpu",
+                   callback=None,
+                   callback_freq=100,):
+    """
+    Trains a score model using a custom loss function with an optional callback.
+
+    Args:
+        X_train_tsr (torch.Tensor): Training data tensor of shape [N, ndim].
+        score_model_td (nn.Module): The score model to be trained.
+        loss_fn (callable): The loss function to compute the loss.
+        lr (float, optional): Learning rate for the optimizer. Defaults to 0.005.
+        nepochs (int, optional): Number of training epochs. Defaults to 750.
+        batch_size (int, optional): Batch size for training. If None, uses the entire dataset. Defaults to None.
+        device (str, optional): Device to train on ("cpu" or "cuda"). Defaults to "cpu".
+        callback (callable, optional): A function to call at specified intervals. Should accept arguments (epoch, loss, model).
+        callback_freq (int, optional): Frequency (in epochs) to call the callback function. Defaults to 100.
+
+    Returns:
+        tuple: Trained score model and a list of loss values per epoch.
+    """
     ndim = X_train_tsr.shape[1]
     score_model_td.to(device)
     X_train_tsr = X_train_tsr.to(device)
@@ -100,7 +119,11 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         if ep == 0:
             print(f"step {ep} loss {loss.item():.3f}")
         loss_traj.append(loss.item())
-    
+
+        # Invoke callback if specified and if epoch matches the frequency
+        if callback is not None and (ep + 1) % callback_freq == 0:
+            callback(epoch=ep + 1, loss=loss.item(), model=score_model_td)
+        
     return score_model_td, loss_traj
 
 
