@@ -153,7 +153,7 @@ def parse_args():
         type=int,
         nargs=3,
         action='append',
-        default=[(0, 10, 1), (10, 50, 5), (50, 100, 10), (100, 500, 25), (500, 2500, 50), (2500, 5000, 100), (5000, 10000, 250)],
+        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 64)],
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
     )
     return parser.parse_args()
