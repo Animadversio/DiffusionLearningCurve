@@ -67,6 +67,8 @@ class UNetBlockStyleMLP_backbone(nn.Module):
     def forward(self, x, t_enc, cond=None):
         # t_enc : preconditioned version of sigma, usually 
         # ln_std_vec = torch.log(std_vec) / 4
+        if cond is not None:
+            raise NotImplementedError("Conditional training is not implemented")
         t_embed = self.embed(t_enc)
         for layer in self.net[:-1]:
             x = layer(x, t_embed)
@@ -80,7 +82,8 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
                    batch_size=None,
                    device="cpu",
                    callback=None,
-                   callback_freq=100,):
+                   callback_freq=100,
+                   callback_step_list=[]):
     """
     Trains a score model using a custom loss function with an optional callback.
 
@@ -93,11 +96,20 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         batch_size (int, optional): Batch size for training. If None, uses the entire dataset. Defaults to None.
         device (str, optional): Device to train on ("cpu" or "cuda"). Defaults to "cpu".
         callback (callable, optional): A function to call at specified intervals. Should accept arguments (epoch, loss, model).
-        callback_freq (int, optional): Frequency (in epochs) to call the callback function. Defaults to 100.
-
+        callback_freq (int, optional): Frequency (in epochs) to call the callback function. Defaults to 100. Set to None or 0 or negative to disable -> can use callback_step_list instead.
+        callback_step_list (list, optional): List of steps to call the callback function. Defaults to []. 
     Returns:
         tuple: Trained score model and a list of loss values per epoch.
     """
+    def check_callback_step(ep):
+        if ep == nepochs - 1 or ep == 0:
+            return True
+        if callback_freq is not None and callback_freq > 0 and (ep + 1) % callback_freq == 0:
+            return True
+        if callback_step_list is not None and (ep + 1) in callback_step_list:
+            return True
+        return False
+
     ndim = X_train_tsr.shape[1]
     score_model_td.to(device)
     X_train_tsr = X_train_tsr.to(device)
@@ -121,8 +133,7 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         loss_traj.append(loss.item())
 
         # Invoke callback if specified and if epoch matches the frequency
-        if callback is not None and \
-            ((ep + 1) % callback_freq == 0 or ep == nepochs - 1 or ep == 0):
+        if callback is not None and check_callback_step(ep):
             callback(epoch=ep + 1, loss=loss.item(), model=score_model_td)
         
     return score_model_td, loss_traj
