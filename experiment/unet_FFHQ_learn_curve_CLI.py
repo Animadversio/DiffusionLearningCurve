@@ -194,7 +194,8 @@ def parse_args():
         type=int,
         nargs=3,
         action='append',
-        default=[(0, 10, 2), (10, 50, 4), (50, 100, 8), (100, 500, 16), (500, 2500, 32), (2500, 5000, 64), (5000, 10000, 128), (10000, 50000, 256)],#
+        # default=[(0, 10, 2), (10, 50, 4), (50, 100, 8), (100, 500, 16), (500, 2500, 32), (2500, 5000, 64), (5000, 10000, 128), (10000, 50000, 256)],#
+        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)],#
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
     )
     return parser.parse_args()
@@ -243,7 +244,7 @@ if args.dataset_name == "FFHQ":
     edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
     dataset = ImageFolderDataset(edm_ffhq64_path)
 elif args.dataset_name == "AFHQ":
-    edm_afhq_path = join(edm_dataset_root, "afhq-64x64.zip")
+    edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
     dataset = ImageFolderDataset(edm_afhq_path)
 print(f"{args.dataset_name} dataset: {len(dataset)}")
 print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
