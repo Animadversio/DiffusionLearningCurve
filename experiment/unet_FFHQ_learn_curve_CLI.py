@@ -187,6 +187,7 @@ def parse_args():
     parser.add_argument("--attn_resolutions", type=int, nargs='+', default=[], help="Attention resolutions")
     parser.add_argument("--eval_sample_size", type=int, default=1000, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=1024, help="Evaluation batch size")
+    parser.add_argument("--eval_sampling_steps", type=int, default=35, help="Evaluation sampling steps")
     parser.add_argument("--record_frequency", type=int, default=0, help="Evaluation sample frequency")
     parser.add_argument(
         '-r', '--record_step_range',
@@ -213,6 +214,7 @@ attn_resolutions = args.attn_resolutions
 lr = args.lr
 eval_sample_size = args.eval_sample_size
 eval_batch_size = args.eval_batch_size
+eval_sampling_steps = args.eval_sampling_steps
 record_frequency = args.record_frequency
 record_step_range = args.record_step_range
 ranges = []
@@ -243,9 +245,15 @@ edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/D
 if args.dataset_name == "FFHQ":
     edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
     dataset = ImageFolderDataset(edm_ffhq64_path)
+    imgsize = 64
 elif args.dataset_name == "AFHQ":
     edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
     dataset = ImageFolderDataset(edm_afhq_path)
+    imgsize = 64
+elif args.dataset_name == "CIFAR":
+    edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+    dataset = ImageFolderDataset(edm_cifar_path)
+    imgsize = 32
 print(f"{args.dataset_name} dataset: {len(dataset)}")
 print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
 Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
@@ -278,7 +286,7 @@ def sampling_callback_fn(epoch, loss, model):
         batch_size_i = min(eval_batch_size, eval_sample_size - i)
         noise_init = torch.randn(batch_size_i, *imgshape).to(device)
         x_out_i, x_traj_i, x0hat_traj_i, t_steps_i = edm_sampler(model, noise_init,
-                        num_steps=35, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
+                        num_steps=eval_sampling_steps, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
         x_out_batches.append(x_out_i)
     
     x_out = torch.cat(x_out_batches, dim=0)
@@ -297,7 +305,7 @@ ndim = pnts.shape[1]
 print(f"{args.dataset_name} dataset {pnts.shape[0]} samples, {ndim} features")
 config = edict(
     channels=3,
-    img_size=64,
+    img_size=imgsize,
     layers_per_block=layers_per_block,
     decoder_init_attn=decoder_init_attn,
     attn_resolutions=attn_resolutions,
