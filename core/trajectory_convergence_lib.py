@@ -94,22 +94,22 @@ def harmonic_mean(A, B):
 
 
 import pandas as pd
-def compute_crossing_points(patch_eigval, diag_cov_x_patch_sample_true_eigenbasis_traj, step_slice, smooth_sigma=2, threshold_type="harmonic_mean", threshold_fraction=0.2):
-    num_trajectories = diag_cov_x_patch_sample_true_eigenbasis_traj.shape[1]
+def compute_crossing_points(target_eigval, empiric_var_traj, step_slice, smooth_sigma=2, threshold_type="harmonic_mean", threshold_fraction=0.2):
+    num_trajectories = empiric_var_traj.shape[1]
     crossing_steps = []
     directions = []
     for i in range(num_trajectories):
-        trajectory = diag_cov_x_patch_sample_true_eigenbasis_traj[:, i]
+        trajectory = empiric_var_traj[:, i]
         if threshold_type == "range":
-            threshold = np.array([patch_eigval[i] * (1 - threshold_fraction), patch_eigval[i] * (1 + threshold_fraction)])
+            threshold = np.array([target_eigval[i] * (1 - threshold_fraction), target_eigval[i] * (1 + threshold_fraction)])
             crossing_idx, direction = smooth_and_find_range_crossing(trajectory, threshold[0], threshold[1], smooth_sigma=smooth_sigma)
         else:
             if threshold_type == "harmonic_mean":
-                threshold = harmonic_mean(patch_eigval[i], trajectory[0])
+                threshold = harmonic_mean(target_eigval[i], trajectory[0])
             elif threshold_type == "mean":
-                threshold = (patch_eigval[i] + trajectory[0]) / 2
+                threshold = (target_eigval[i] + trajectory[0]) / 2
             elif threshold_type == "geometric_mean":
-                threshold = np.sqrt(patch_eigval[i] * trajectory[0])
+                threshold = np.sqrt(target_eigval[i] * trajectory[0])
             crossing_idx, direction = smooth_and_find_threshold_crossing(trajectory, threshold, first_crossing=True, smooth_sigma=smooth_sigma)
         if crossing_idx is not None:
             crossing_steps.append(step_slice[crossing_idx])
@@ -118,7 +118,7 @@ def compute_crossing_points(patch_eigval, diag_cov_x_patch_sample_true_eigenbasi
             print(f"No crossing found for mode {i}")
             crossing_steps.append(np.nan)
             directions.append(0)
-    df = pd.DataFrame({"Variance": patch_eigval.cpu().numpy(), "emergence_step": crossing_steps, "direction": directions})
+    df = pd.DataFrame({"Variance": target_eigval.cpu().numpy(), "emergence_step": crossing_steps, "direction": directions})
     # translate direction 1 -> decrease, -1 -> increase
     df["Direction"] = df["direction"].map({1: "decrease", -1: "increase"})
     return df
@@ -185,7 +185,7 @@ def analyze_and_plot_variance(df,
     # Initialize the plot
     if ax is None:
         fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111)
+        ax = fig.gca()
     else:
         fig = ax.figure
     plt.sca(ax)
@@ -289,7 +289,7 @@ def analyze_and_plot_variance(df,
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
-    plt.legend()
+    plt.legend(loc='lower left')
     plt.tight_layout()
     
     # Display the plot
