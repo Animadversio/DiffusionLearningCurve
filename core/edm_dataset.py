@@ -323,3 +323,32 @@ class TensorDataset(Dataset):
         # labels = np.array(labels)
         # labels = labels.astype({1: np.int64, 2: np.float32}[labels.ndim])
         # return labels
+
+
+def load_dataset(dataset_name, normalize=True):
+    from os.path import join
+    # import sys
+    # sys.path.append("/n/home12/binxuwang/Github/edm")
+    # from training.dataset import TensorDataset, ImageFolderDataset
+    edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+    if dataset_name == "FFHQ":
+        edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
+        dataset = ImageFolderDataset(edm_ffhq64_path)
+        imgsize = 64
+    elif dataset_name == "AFHQ":
+        edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
+        dataset = ImageFolderDataset(edm_afhq_path)
+        imgsize = 64
+    elif dataset_name == "CIFAR":
+        edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+        dataset = ImageFolderDataset(edm_cifar_path)
+        imgsize = 32
+    print(f"{dataset_name} dataset: {len(dataset)}")
+    print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
+    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    if normalize:
+        print("Normalizing dataset to [-1.0, 1.0]")
+        Xtsr = (Xtsr_raw - 0.5) / 0.5
+    else:
+        Xtsr = Xtsr_raw
+    return Xtsr, imgsize

@@ -307,7 +307,7 @@ def plot_sample_pnts_mean_deviation_trajectories(step_slice, mean_x_sample_traj,
     plt.show()
     
 
-from trajectory_convergence_lib import *
+# from trajectory_convergence_lib import *
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d

@@ -122,3 +122,178 @@ def compute_crossing_points(patch_eigval, diag_cov_x_patch_sample_true_eigenbasi
     # translate direction 1 -> decrease, -1 -> increase
     df["Direction"] = df["direction"].map({1: "decrease", -1: "increase"})
     return df
+
+
+import torch
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+def analyze_and_plot_variance(df, 
+                              x_col='emergence_step', 
+                              y_col='Variance', 
+                              hue_col='Direction',
+                              palette={"increase": "red", "decrease": "blue"},
+                              log_x=True,
+                              log_y=True,
+                              figsize=(8, 6),
+                              fit_label_format='{direction} fit: $y = {a:.2f}x^{{{b:.2f}}}$',
+                              reverse_equation=False,
+                              annotate=True,
+                              annotate_offset=(0, 0),
+                              title='Variance vs Emergence Step with Fitted Lines',
+                              xlabel='Emergence Step',
+                              ylabel='Variance',
+                              alpha=0.7,
+                              fit_line_kwargs=None,
+                              scatter_kwargs=None,
+                              ax=None):
+    """
+    Analyzes and plots variance against emergence steps with separate linear fits for each direction.
+    
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing the data.
+    - x_col (str): Column name for the x-axis.
+    - y_col (str): Column name for the y-axis.
+    - hue_col (str): Column name for hue differentiation (e.g., "Direction").
+    - palette (dict): Dictionary mapping hue categories to colors.
+    - log_x (bool): Whether to apply logarithmic scale to the x-axis.
+    - log_y (bool): Whether to apply logarithmic scale to the y-axis.
+    - figsize (tuple): Size of the matplotlib figure.
+    - fit_label_format (str): Format string for the fit labels.
+    - annotate (bool): Whether to annotate the plot with fit parameters.
+    - annotate_offset (tuple): (x, y) offset for annotation text.
+    - title (str): Title of the plot.
+    - xlabel (str): Label for the x-axis.
+    - ylabel (str): Label for the y-axis.
+    - alpha (float): Transparency level for scatter points.
+    - fit_line_kwargs (dict): Additional keyword arguments for the fitted line plot.
+    - scatter_kwargs (dict): Additional keyword arguments for the scatter plot.
+    
+    Returns:
+    - matplotlib.figure.Figure: The generated matplotlib figure.
+    """
+    
+    # Set default keyword arguments if not provided
+    if fit_line_kwargs is None:
+        fit_line_kwargs = {}
+    if scatter_kwargs is None:
+        scatter_kwargs = {}
+    
+    # Initialize the plot
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+    else:
+        fig = ax.figure
+    plt.sca(ax)
+    scatter = sns.scatterplot(
+        data=df,
+        x=x_col,
+        y=y_col,
+        hue=hue_col,
+        palette=palette,
+        alpha=alpha,
+        **scatter_kwargs
+    )
+    
+    # Apply logarithmic scales if specified
+    if log_x:
+        plt.xscale('log')
+    if log_y:
+        plt.yscale('log')
+    
+    # Prepare for regression
+    directions = df[hue_col].unique()
+    colors = palette  # Assumes palette keys match directions
+    
+    for direction in directions:
+        subset = df[df[hue_col] == direction].copy()
+        
+        # Ensure there are enough data points to perform regression
+        if subset.shape[0] < 2:
+            print(f"Not enough data points to fit for direction: {direction}")
+            continue
+        
+        # Log-transform the data if log scales are used
+        if log_x and log_y:
+            # Handle zero or negative values by filtering them out
+            subset = subset[(subset[x_col] > 0) & (subset[y_col] > 0)]
+            if subset.empty:
+                print(f"No positive data points for direction: {direction}")
+                continue
+            
+            subset['log_x'] = np.log10(subset[x_col])
+            subset['log_y'] = np.log10(subset[y_col])
+            
+            X = subset[['log_x']].values
+            y = subset['log_y'].values
+        else:
+            X = subset[[x_col]].values
+            y = subset[y_col].values
+        
+        # Fit linear regression
+        model = LinearRegression()
+        model.fit(X, y)
+        slope = model.coef_[0]
+        intercept = model.intercept_
+        
+        # Generate values for the fitted line
+        if log_x and log_y:
+            x_fit = np.linspace(subset[x_col].min(), subset[x_col].max(), 100)
+            y_fit = 10**(intercept) * x_fit**slope
+        else:
+            x_fit = np.linspace(subset[x_col].min(), subset[x_col].max(), 100)
+            y_fit = intercept + slope * x_fit
+        
+        # Plot the fitted line
+        plt.plot(x_fit, y_fit, color=colors[direction], label=fit_label_format.format(
+            direction=direction.capitalize(),
+            a=10**intercept if log_x and log_y else intercept,
+            b=slope if log_x and log_y else slope
+        ), **fit_line_kwargs)
+        
+        # Annotate the plot with the parameters
+        if annotate:
+            # Choose annotation position near the end of the fitted line
+            ann_x = x_fit[0] * (1 + annotate_offset[0])
+            ann_y = y_fit[0] * (1 + annotate_offset[1])
+            a = 10**intercept if log_x and log_y else intercept
+            b = slope if log_x and log_y else slope
+            if reverse_equation:
+                label = fit_label_format.format(
+                    direction=direction.capitalize(),
+                    a=a**(1/b),
+                    b=1/b
+                )
+            else:
+                label = fit_label_format.format(
+                    direction=direction.capitalize(),
+                    a=a,
+                    b=b
+                )
+            
+            plt.text(
+                ann_x,
+                ann_y,
+                label,
+                color=colors[direction],
+                fontsize=9,
+                verticalalignment='bottom',
+                horizontalalignment='right'
+            )
+    
+    # Final plot adjustments
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    
+    # Display the plot
+    # plt.show()
+    
+    # Optionally, return the figure object
+    return fig
