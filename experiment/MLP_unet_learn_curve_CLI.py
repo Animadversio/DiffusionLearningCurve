@@ -146,7 +146,20 @@ elif dataset_name == "MNIST":
                                            train=True, download=True, transform=transforms.ToTensor())
     mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
     data_Xtsr = mnist_Xtsr
-imgshape = data_Xtsr.shape[1:]
+elif dataset_name == "ffhq-32x32":
+    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
+    imgshape = data_Xtsr.shape[1:]
+elif dataset_name == "CIFAR":
+    import sys
+    sys.path.append("/n/home12/binxuwang/Github/edm")
+    from training.dataset import ImageFolderDataset
+    edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+    edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+    dataset = ImageFolderDataset(edm_cifar_path)
+    data_Xtsr = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    imgshape = data_Xtsr.shape[1:]
+else:
+    raise ValueError(f"Dataset {dataset_name} not found")
 
 loss_store = {}
 def sampling_callback_fn(epoch, loss, model):

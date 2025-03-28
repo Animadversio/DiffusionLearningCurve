@@ -281,6 +281,12 @@ elif dataset_name == "FFHQ_random_words_jitter":
     imgsize = 64
     imgchannels = 3
     Xtsr_raw = image_tensor
+elif dataset_name == "ffhq-32x32":
+    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
+    imgsize = 32
+    imgchannels = 3
+    Xtsr_raw = data_Xtsr
+    
 
 assert Xtsr_raw.shape[1] == imgchannels
 assert Xtsr_raw.shape[2] == imgsize
