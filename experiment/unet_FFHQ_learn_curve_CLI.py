@@ -228,13 +228,13 @@ record_times = generate_record_times(ranges)
 print(f"record_frequency: {record_frequency}")
 print(f"record_step_range: {record_step_range}")
 print(f"record_times: {record_times}")
+
 saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 savedir = f"{saveroot}/{exp_name}"
 sample_dir = f"{savedir}/samples"
 os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
 device = get_device()
-
 
 import sys
 sys.path.append("/n/home12/binxuwang/Github/edm")
