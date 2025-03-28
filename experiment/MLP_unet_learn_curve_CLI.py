@@ -79,13 +79,13 @@ def generate_record_times(ranges: List[Tuple[int, int, int]]) -> List[int]:
 def parse_args():
     parser = argparse.ArgumentParser(description="UNet Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="words32x32_50k", help="Dataset name")
-    parser.add_argument("--exp_name", type=str, default="words32x32_50k_UNet_MLP_EDM", help="Experiment name")
+    parser.add_argument("--exp_name", type=str, default="words32x32_50k_UNet_MLP_EDM_8L_1536D_lr1e-4", help="Experiment name")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
     parser.add_argument("--nsteps", type=int, default=100000, help="Number of steps")
     parser.add_argument("--mlp_layers", type=int, default=8, help="Number of layers")
     parser.add_argument("--mlp_hidden_dim", type=int, default=1536, help="Hidden dimension")
     parser.add_argument("--mlp_time_embed_dim", type=int, default=128, help="Time embedding dimension")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+    parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--eval_sample_size", type=int, default=2048, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=2048, help="Evaluation batch size")
     parser.add_argument("--eval_sampling_steps", type=int, default=40, help="Evaluation sampling steps")
@@ -97,7 +97,7 @@ def parse_args():
         nargs=3,
         action='append',
         # default=[(0, 10, 2), (10, 50, 4), (50, 100, 8), (100, 500, 16), (500, 2500, 32), (2500, 5000, 64), (5000, 10000, 128), (10000, 50000, 256)],#
-        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)],#
+        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256), (50000, 100000, 512)],#
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
     )
     return parser.parse_args()
