@@ -327,6 +327,8 @@ class TensorDataset(Dataset):
 
 def load_dataset(dataset_name, normalize=True):
     from os.path import join
+    import torchvision
+    import torchvision.transforms as transforms
     # import sys
     # sys.path.append("/n/home12/binxuwang/Github/edm")
     # from training.dataset import TensorDataset, ImageFolderDataset
@@ -343,9 +345,20 @@ def load_dataset(dataset_name, normalize=True):
         edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
         dataset = ImageFolderDataset(edm_cifar_path)
         imgsize = 32
+    elif dataset_name == "MNIST":
+        dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
+                            train=True, download=True, 
+                            transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((32, 32))]))
+        imgsize = 32
+        # mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
+        # print(mnist_Xtsr.shape) # 60000 x 32 x 32
+        # Xtsr = (mnist_Xtsr.to(device) - 0.5) / 0.5
     print(f"{dataset_name} dataset: {len(dataset)}")
     print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
-    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    if isinstance(dataset, torchvision.datasets.MNIST):
+        Xtsr_raw = torch.stack([dataset[i][0] for i in range(len(dataset))])
+    else:
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     if normalize:
         print("Normalizing dataset to [-1.0, 1.0]")
         Xtsr = (Xtsr_raw - 0.5) / 0.5
