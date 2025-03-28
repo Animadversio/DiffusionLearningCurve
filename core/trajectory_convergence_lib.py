@@ -218,67 +218,55 @@ def analyze_and_plot_variance(df,
             continue
         
         # Log-transform the data if log scales are used
-        if log_x and log_y:
-            # Handle zero or negative values by filtering them out
-            subset = subset[(subset[x_col] > 0) & (subset[y_col] > 0)]
-            if subset.empty:
-                print(f"No positive data points for direction: {direction}")
-                continue
-            
-            subset['log_x'] = np.log10(subset[x_col])
-            subset['log_y'] = np.log10(subset[y_col])
-            
-            X = subset[['log_x']].values
-            y = subset['log_y'].values
-        else:
-            X = subset[[x_col]].values
-            y = subset[y_col].values
+        # Handle zero or negative values by filtering them out
+        subset = subset[(subset[x_col] > 0) & (subset[y_col] > 0)]
+        if subset.empty:
+            print(f"No positive data points for direction: {direction}")
+            continue
+        
+        subset['log_x'] = np.log10(subset[x_col])
+        subset['log_y'] = np.log10(subset[y_col])
+        
+        X = subset[['log_x']].values
+        y = subset[['log_y']].values
         
         # Fit linear regression
         model = LinearRegression()
-        model.fit(X, y)
+        if reverse_equation:
+            model.fit(y, X[:,0])
+        else:
+            model.fit(X, y[:,0])
         slope = model.coef_[0]
         intercept = model.intercept_
         
+        a = 10**intercept 
+        b = slope 
+        fit_label = fit_label_format.format(
+            direction=direction.capitalize(),
+            a=a,
+            b=b
+        )
         # Generate values for the fitted line
-        if log_x and log_y:
-            x_fit = np.linspace(subset[x_col].min(), subset[x_col].max(), 100)
-            y_fit = 10**(intercept) * x_fit**slope
+        if reverse_equation:
+            y_fit = np.linspace(subset[y_col].min(), subset[y_col].max(), 100)
+            x_fit = 10**(intercept) * y_fit ** slope
         else:
             x_fit = np.linspace(subset[x_col].min(), subset[x_col].max(), 100)
-            y_fit = intercept + slope * x_fit
+            y_fit = 10**(intercept) * x_fit ** slope
         
         # Plot the fitted line
-        plt.plot(x_fit, y_fit, color=colors[direction], label=fit_label_format.format(
-            direction=direction.capitalize(),
-            a=10**intercept if log_x and log_y else intercept,
-            b=slope if log_x and log_y else slope
-        ), **fit_line_kwargs)
+        plt.plot(x_fit, y_fit, color=colors[direction], label=fit_label, **fit_line_kwargs)
         
         # Annotate the plot with the parameters
         if annotate:
             # Choose annotation position near the end of the fitted line
             ann_x = x_fit[0] * (1 + annotate_offset[0])
             ann_y = y_fit[0] * (1 + annotate_offset[1])
-            a = 10**intercept if log_x and log_y else intercept
-            b = slope if log_x and log_y else slope
-            if reverse_equation:
-                label = fit_label_format.format(
-                    direction=direction.capitalize(),
-                    a=a**(1/b),
-                    b=1/b
-                )
-            else:
-                label = fit_label_format.format(
-                    direction=direction.capitalize(),
-                    a=a,
-                    b=b
-                )
             
             plt.text(
                 ann_x,
                 ann_y,
-                label,
+                fit_label,
                 color=colors[direction],
                 fontsize=9,
                 verticalalignment='bottom',
