@@ -202,7 +202,7 @@ def parse_args():
     return parser.parse_args()
 
 args = parse_args()
-
+dataset_name = args.dataset_name
 exp_name = args.exp_name
 batch_size = args.batch_size
 nsteps = args.nsteps
@@ -240,23 +240,37 @@ import sys
 sys.path.append("/n/home12/binxuwang/Github/edm")
 from training.dataset import TensorDataset, ImageFolderDataset
 
-ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256 "
+ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256"
 edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
-if args.dataset_name == "FFHQ":
+if dataset_name == "FFHQ":
     edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
     dataset = ImageFolderDataset(edm_ffhq64_path)
     imgsize = 64
-elif args.dataset_name == "AFHQ":
+    imgchannels = 3
+    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+elif dataset_name == "AFHQ":
     edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
     dataset = ImageFolderDataset(edm_afhq_path)
     imgsize = 64
-elif args.dataset_name == "CIFAR":
+    imgchannels = 3
+    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+elif dataset_name == "CIFAR":
     edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
     dataset = ImageFolderDataset(edm_cifar_path)
     imgsize = 32
-print(f"{args.dataset_name} dataset: {len(dataset)}")
-print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
-Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    imgchannels = 3
+    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+elif dataset_name == "words32x32_50k":
+    image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k.pt")
+    text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_words.pkl", "rb"))
+    imgsize = 32
+    imgchannels = 1
+    Xtsr_raw = image_tensor
+assert Xtsr_raw.shape[1] == imgchannels
+assert Xtsr_raw.shape[2] == imgsize
+assert Xtsr_raw.shape[3] == imgsize
+print(f"{dataset_name} dataset: {len(Xtsr_raw)}")
+print(f"value range" , (Xtsr_raw.max()), (Xtsr_raw.min()))
 # %%
 # layers_per_block = 1
 # decoder_init_attn = True
@@ -304,7 +318,7 @@ ndim = pnts.shape[1]
 # cov_empirical = torch.cov(pnts.T, correction=1)
 print(f"{args.dataset_name} dataset {pnts.shape[0]} samples, {ndim} features")
 config = edict(
-    channels=3,
+    channels=imgchannels,
     img_size=imgsize,
     layers_per_block=layers_per_block,
     decoder_init_attn=decoder_init_attn,
@@ -318,6 +332,8 @@ config = edict(
 pprint(config)
 
 json.dump(config, open(f"{savedir}/config.json", "w"))
+json.dump(args.__dict__, open(f"{savedir}/args.json", "w"))
+
 unet = create_unet_model(config)
 model_precd = EDMCNNPrecondWrapper(unet, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
 edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
