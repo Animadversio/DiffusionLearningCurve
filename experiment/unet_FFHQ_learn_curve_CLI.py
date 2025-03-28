@@ -261,11 +261,27 @@ elif dataset_name == "CIFAR":
     imgchannels = 3
     Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
 elif dataset_name == "words32x32_50k":
-    image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k.pt")
-    text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_words.pkl", "rb"))
+    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+    image_tensor = torch.load(join(wordimg_root, "words32x32_50k.pt"))
+    text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_words.pkl"), "rb"))
     imgsize = 32
     imgchannels = 1
     Xtsr_raw = image_tensor
+elif dataset_name == "FFHQ_fix_words":
+    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+    save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
+    image_tensor = torch.load(save_path)
+    imgsize = 64
+    imgchannels = 3
+    Xtsr_raw = image_tensor
+elif dataset_name == "FFHQ_random_words_jitter":
+    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+    save_path = join(wordimg_root, "ffhq-64x64-random_word_jitter2-8.pt")
+    image_tensor = torch.load(save_path)
+    imgsize = 64
+    imgchannels = 3
+    Xtsr_raw = image_tensor
+
 assert Xtsr_raw.shape[1] == imgchannels
 assert Xtsr_raw.shape[2] == imgsize
 assert Xtsr_raw.shape[3] == imgsize
