@@ -155,6 +155,9 @@ elif dataset_name == "ffhq-32x32-fix_words":
 elif dataset_name == "ffhq-32x32-random_word_jitter":
     data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
     imgshape = data_Xtsr.shape[1:]
+elif dataset_name == "afhq-32x32":
+    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
+    imgshape = data_Xtsr.shape[1:]
 elif dataset_name == "CIFAR":
     import sys
     sys.path.append("/n/home12/binxuwang/Github/edm")
