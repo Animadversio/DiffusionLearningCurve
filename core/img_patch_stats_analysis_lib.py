@@ -50,6 +50,59 @@ def sweep_and_create_sample_store(sampledir):
             print(f"Warning: could not extract epoch from filename: {filename}")
     return sample_store
 
+
+
+def process_img_mean_cov_statistics(train_images, sample_store, savedir, device="cuda", imgshape=(3, 64, 64), save_pkl=True):
+    img_shape = train_images.shape[1:]
+    img_dim = np.prod(img_shape)
+    img_mean = train_images.mean(dim=0)
+    img_cov = torch.cov(train_images.view(train_images.shape[0], -1).T)
+    img_eigval, img_eigvec = torch.linalg.eigh(img_cov.to(device))
+    img_eigval = img_eigval.flip(0)
+    img_eigvec = img_eigvec.flip(1)
+    img_eigvec = img_eigvec.to(device)
+    print(f"img_cov.shape: {img_cov.shape} computed on {train_images.shape[0]} images")
+    mean_x_sample_traj = []
+    cov_x_sample_traj = []
+    diag_cov_x_sample_true_eigenbasis_traj = []
+    step_slice = sorted([*sample_store.keys()])
+    
+    for training_step in tqdm(step_slice):
+        x_final = sample_store[training_step]
+        if isinstance(x_final, tuple):
+            x_final = x_final[0]
+        # x_final_patches = extract_patches(x_final.view(x_final.shape[0], *imgshape), patch_size=patch_size, patch_stride=patch_stride)
+        x_final_flattened = x_final.view(x_final.shape[0], -1)
+        mean_x_sample = x_final_flattened.mean(dim=0)
+        cov_x_sample = torch.cov(x_final_flattened.to(device).T)
+        mean_x_sample_traj.append(mean_x_sample.cpu())
+
+        # Estimate the variance along the eigenvector of the covariance matrix
+        cov_x_sample_true_eigenbasis = img_eigvec.T @ cov_x_sample.to(device) @ img_eigvec
+        diag_cov_x_sample_true_eigenbasis = torch.diag(cov_x_sample_true_eigenbasis)
+        diag_cov_x_sample_true_eigenbasis_traj.append(diag_cov_x_sample_true_eigenbasis.cpu())
+        cov_x_sample_traj.append(cov_x_sample.cpu())
+    
+    mean_x_sample_traj = torch.stack(mean_x_sample_traj).cpu()
+    cov_x_sample_traj = torch.stack(cov_x_sample_traj).cpu()
+    diag_cov_x_sample_true_eigenbasis_traj = torch.stack(diag_cov_x_sample_true_eigenbasis_traj).cpu()
+
+    if save_pkl:
+        pkl.dump({
+            "diag_cov_x_sample_true_eigenbasis_traj": diag_cov_x_sample_true_eigenbasis_traj, 
+            "mean_x_sample_traj": mean_x_sample_traj,
+            "cov_x_sample_traj": cov_x_sample_traj,
+            "img_mean": img_mean.cpu(),
+            "img_cov": img_cov.cpu(),
+            "img_eigval": img_eigval.cpu(),
+            "img_eigvec": img_eigvec.cpu(),
+            "step_slice": step_slice
+        }, open(f"{savedir}/sample_img_cov_true_eigenbasis_diag_traj.pkl", "wb"))
+        print(f"Saved to {savedir}/sample_img_cov_true_eigenbasis_diag_traj.pkl")
+    return img_mean, img_cov, img_eigval, img_eigvec, \
+        mean_x_sample_traj, cov_x_sample_traj, diag_cov_x_sample_true_eigenbasis_traj
+
+
 def extract_patches(images, patch_size, patch_stride):
     B, C, H, W = images.shape
     patches = images.unfold(2, patch_size, patch_stride).unfold(3, patch_size, patch_stride)
@@ -58,7 +111,7 @@ def extract_patches(images, patch_size, patch_stride):
     return patches
 
 
-def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch_size=8, patch_stride=4, device="cuda", imgshape=(3, 64, 64)):
+def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch_size=8, patch_stride=4, device="cuda", imgshape=(3, 64, 64), save_pkl=True):
     # images = Xtsr.view(Xtsr.shape[0], *imgshape)
     patches = extract_patches(train_images, patch_size=patch_size, patch_stride=patch_stride)
     patch_shape = patches.shape[1:]
@@ -95,8 +148,9 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
     cov_x_patch_sample_traj = torch.stack(cov_x_patch_sample_traj).cpu()
     diag_cov_x_patch_sample_true_eigenbasis_traj = torch.stack(diag_cov_x_patch_sample_true_eigenbasis_traj).cpu()
 
-    pkl.dump({
-        "diag_cov_x_patch_sample_true_eigenbasis_traj": diag_cov_x_patch_sample_true_eigenbasis_traj, 
+    if save_pkl:
+        pkl.dump({
+            "diag_cov_x_patch_sample_true_eigenbasis_traj": diag_cov_x_patch_sample_true_eigenbasis_traj, 
         "mean_x_patch_sample_traj": mean_x_patch_sample_traj,
         "cov_x_patch_sample_traj": cov_x_patch_sample_traj,
         "patch_mean": patch_mean.cpu(),
@@ -104,8 +158,8 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
         "patch_eigval": patch_eigval.cpu(),
         "patch_eigvec": patch_eigvec.cpu(),
         "step_slice": step_slice
-    }, open(f"{savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl", "wb"))
-    print(f"Saved to {savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl")
+        }, open(f"{savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl", "wb"))
+        print(f"Saved to {savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl")
     return patch_mean, patch_cov, patch_eigval, patch_eigvec, mean_x_patch_sample_traj, cov_x_patch_sample_traj, diag_cov_x_patch_sample_true_eigenbasis_traj
     
 # Example usage:
@@ -114,30 +168,36 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
 def plot_variance_trajectories(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj, patch_eigval, slice2plot,
                                patch_size, patch_stride, savedir, dataset_name="FFHQ64"):
     ndim = patch_eigval.shape[0]
-    max_eigid = max(range(ndim)[slice2plot])    
+    if isinstance(slice2plot, slice):
+        eigidx2plot = range(ndim)[slice2plot]
+    elif isinstance(slice2plot, (list, tuple, np.ndarray, torch.Tensor)):
+        eigidx2plot = slice2plot
+    else:
+        raise ValueError(f"Invalid slice2plot type: {type(slice2plot)}")
+    max_eigid = max(eigidx2plot)
     plt.figure()
-    plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj[:, slice2plot], alpha=0.7)
-    for i, eigid in enumerate(range(ndim)[slice2plot]):
+    plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj[:, eigidx2plot], alpha=0.7)
+    for i, eigid in enumerate(eigidx2plot):
         plt.axhline(patch_eigval[eigid].item(), color=f"C{i}", linestyle="--", alpha=0.7)
     plt.xscale("log")
     plt.yscale("log")
     plt.xlabel("Training step")
     plt.ylabel("Variance")
     plt.title(f"Variance of learned patches ({patch_size}x{patch_size}, stride={patch_stride}) on true eigenbasis | {dataset_name}")
-    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in range(ndim)[slice2plot]], bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in eigidx2plot], bbox_to_anchor=(1.05, 1), loc='upper left')
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj_raw_top{max_eigid}")
     plt.show()
 
     plt.figure()
     diag_cov_x_patch_sample_true_eigenbasis_traj_normalized = diag_cov_x_patch_sample_true_eigenbasis_traj / patch_eigval
-    plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj_normalized[:, slice2plot], alpha=0.7)
+    plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj_normalized[:, eigidx2plot], alpha=0.7)
     plt.axhline(1, color="k", linestyle="--", alpha=0.7)
     plt.xscale("log")
     plt.yscale("log")
     plt.xlabel("Training step")
     plt.ylabel("Variance [normalized by target variance]")
     plt.title(f"Variance of learned patches ({patch_size}x{patch_size}, stride={patch_stride}) on true eigenbasis | {dataset_name}")
-    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in range(ndim)[slice2plot]], bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in eigidx2plot], bbox_to_anchor=(1.05, 1), loc='upper left')
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj_normalized_top{max_eigid}")
     plt.show()
 
@@ -152,35 +212,41 @@ def plot_mean_deviation_trajectories(step_slice, mean_x_patch_sample_traj, patch
     MSE_per_mode_traj_normalized = MSE_per_mode_traj / patch_eigval
 
     ndim = patch_eigval.shape[0]
-    max_eigid = max(range(ndim)[slice2plot])    
+    if isinstance(slice2plot, slice):
+        eigidx2plot = range(ndim)[slice2plot]
+    elif isinstance(slice2plot, (list, tuple, np.ndarray, torch.Tensor)):
+        eigidx2plot = slice2plot
+    else:
+        raise ValueError(f"Invalid slice2plot type: {type(slice2plot)}")
+    max_eigid = max(eigidx2plot)    
 
     plt.figure()
-    plt.plot(step_slice, mean_deviation_traj[:, slice2plot], alpha=0.7)
+    plt.plot(step_slice, mean_deviation_traj[:, eigidx2plot], alpha=0.7)
     plt.xscale("log")
     plt.xlabel("Training step")
     plt.ylabel("mean deviation")
     plt.title(f"Mean deviation of learned patches ({patch_size}x{patch_size}, stride={patch_stride}) on true eigenbasis | {dataset_name}")
-    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in range(ndim)[slice2plot]], bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in eigidx2plot], bbox_to_anchor=(1.05, 1), loc='upper left')
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_mean_dev_eigenbasis_traj_raw_top{max_eigid}")
     plt.show()
 
     plt.figure()
-    plt.plot(step_slice, MSE_per_mode_traj[:, slice2plot], alpha=0.7)
+    plt.plot(step_slice, MSE_per_mode_traj[:, eigidx2plot], alpha=0.7)
     plt.xscale("log")
     plt.xlabel("Training step")
     plt.ylabel("Squared error of mean deviation")
     plt.title(f"Mean deviation of learned patches ({patch_size}x{patch_size}, stride={patch_stride}) on true eigenbasis | {dataset_name}")
-    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in range(ndim)[slice2plot]], bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in eigidx2plot], bbox_to_anchor=(1.05, 1), loc='upper left')
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_mean_SE_eigenbasis_traj_raw_top{max_eigid}")
     plt.show()
 
     plt.figure()
-    plt.plot(step_slice, MSE_per_mode_traj_normalized[:, slice2plot], alpha=0.7)
+    plt.plot(step_slice, MSE_per_mode_traj_normalized[:, eigidx2plot], alpha=0.7)
     plt.xscale("log")
     plt.xlabel("Training step")
     plt.ylabel("Squared error of mean deviation\n[normalized by target variance]")
     plt.title(f"Mean deviation of learned patches ({patch_size}x{patch_size}, stride={patch_stride}) on true eigenbasis | {dataset_name}")
-    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in range(ndim)[slice2plot]], bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.gca().legend([f"Eig{i} = {patch_eigval[i].item():.2f}" for i in eigidx2plot], bbox_to_anchor=(1.05, 1), loc='upper left')
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_mean_SE_eigenbasis_traj_normalized_top{max_eigid}")
     plt.show()
 
