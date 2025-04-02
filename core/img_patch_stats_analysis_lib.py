@@ -4,6 +4,7 @@ import re
 import os
 import torch
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 import pickle as pkl
 import matplotlib.pyplot as plt
@@ -466,8 +467,8 @@ def harmonic_mean(A, B):
     return 2 / (1 / A + 1 / B)
 
 
-import pandas as pd
-def compute_crossing_points(patch_eigval, diag_cov_x_patch_sample_true_eigenbasis_traj, step_slice, smooth_sigma=2, threshold_type="harmonic_mean", threshold_fraction=0.2):
+def compute_crossing_points(patch_eigval, diag_cov_x_patch_sample_true_eigenbasis_traj, step_slice, smooth_sigma=2, 
+                            threshold_type="harmonic_mean", threshold_fraction=0.2):
     num_trajectories = diag_cov_x_patch_sample_true_eigenbasis_traj.shape[1]
     crossing_steps = []
     directions = []
