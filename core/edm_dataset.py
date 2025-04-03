@@ -325,40 +325,53 @@ class TensorDataset(Dataset):
         # return labels
 
 
+from os.path import join
+import sys
+import torchvision
+import torchvision.transforms as transforms
 def load_dataset(dataset_name, normalize=True):
-    from os.path import join
-    import torchvision
-    import torchvision.transforms as transforms
-    # import sys
-    # sys.path.append("/n/home12/binxuwang/Github/edm")
-    # from training.dataset import TensorDataset, ImageFolderDataset
+    sys.path.append("/n/home12/binxuwang/Github/edm")
+    from training.dataset import TensorDataset, ImageFolderDataset
     edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+    word_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
     if dataset_name == "FFHQ":
         edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
         dataset = ImageFolderDataset(edm_ffhq64_path)
         imgsize = 64
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "AFHQ":
         edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
         dataset = ImageFolderDataset(edm_afhq_path)
         imgsize = 64
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "CIFAR":
         edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
         dataset = ImageFolderDataset(edm_cifar_path)
         imgsize = 32
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "MNIST":
         dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
                             train=True, download=True, 
                             transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((32, 32))]))
         imgsize = 32
+        Xtsr_raw = torch.stack([dataset[i][0] for i in range(len(dataset))])
         # mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
         # print(mnist_Xtsr.shape) # 60000 x 32 x 32
         # Xtsr = (mnist_Xtsr.to(device) - 0.5) / 0.5
-    print(f"{dataset_name} dataset: {len(dataset)}")
-    print(f"value range" , (dataset[0][0].max()), (dataset[0][0].min()))
-    if isinstance(dataset, torchvision.datasets.MNIST):
-        Xtsr_raw = torch.stack([dataset[i][0] for i in range(len(dataset))])
-    else:
-        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    elif dataset_name == "afhq-32x32":
+        Xtsr_raw = torch.load(join(word_dataset_root, "afhq-32x32.pt"))
+        imgsize = 32
+    elif dataset_name == "ffhq-32x32":
+        Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32.pt"))
+        imgsize = 32
+    elif dataset_name == "ffhq-32x32-fix_words":
+        Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32-fixed_text.pt"))
+        imgsize = 32
+    elif dataset_name == "ffhq-32x32-random_word_jitter":
+        Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32-random_word_jitter1-4.pt"))
+        imgsize = 32
+    print(f"{dataset_name} dataset: {Xtsr_raw.shape}")
+    print(f"Raw value range" , (Xtsr_raw[0].max().item()), (Xtsr_raw[0].min().item()))
     if normalize:
         print("Normalizing dataset to [-1.0, 1.0]")
         Xtsr = (Xtsr_raw - 0.5) / 0.5
