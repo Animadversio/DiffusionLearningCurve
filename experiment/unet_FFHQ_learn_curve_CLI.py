@@ -1,32 +1,8 @@
-# %%
-
 
 # %%
-#!kaggle datasets download -d denislukovnikov/ffhq256-images-only
-#!cd $STORE_DIR/Datasets
-#!unzip ffhq256-images-only.zip -d ffhq256
-
-# %%
-# extract features with vae 
-# train a diffusion model on the features
-# DiT? PixArt?
-
-# %%
-
-# %%
-import matplotlib.pyplot as plt
-from os.path import join
-from PIL import Image
-import numpy as np
-import torch
-from torchvision.io import read_image
-from torchvision.transforms.functional import to_pil_image
-
-
-# %%
-
 import sys
 import os
+from os.path import join
 import json
 import pickle as pkl
 import torch
@@ -45,7 +21,6 @@ from core.toy_shape_dataset_lib import generate_random_star_shape_torch
 from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import *
 from core.network_edm_lib import SongUNet, DhariwalUNet
-
 from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
 
 
@@ -106,28 +81,81 @@ def create_unet_model(config):
     print(f'total number of parameters in the Score Model: {pytorch_total_params}')
     return unet
 
+
+def load_dataset(dataset_name):
+    import sys
+    sys.path.append("/n/home12/binxuwang/Github/edm")
+    from training.dataset import TensorDataset, ImageFolderDataset
+    ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256"
+    edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+    if dataset_name == "FFHQ":
+        edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
+        dataset = ImageFolderDataset(edm_ffhq64_path)
+        imgsize = 64
+        imgchannels = 3
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    elif dataset_name == "AFHQ":
+        edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
+        dataset = ImageFolderDataset(edm_afhq_path)
+        imgsize = 64
+        imgchannels = 3
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    elif dataset_name == "CIFAR":
+        edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+        dataset = ImageFolderDataset(edm_cifar_path)
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+    elif dataset_name == "words32x32_50k":
+        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+        image_tensor = torch.load(join(wordimg_root, "words32x32_50k.pt"))
+        text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_words.pkl"), "rb"))
+        imgsize = 32
+        imgchannels = 1
+        Xtsr_raw = image_tensor
+    elif dataset_name == "FFHQ_fix_words":
+        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+        save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
+        image_tensor = torch.load(save_path)
+        imgsize = 64
+        imgchannels = 3
+        Xtsr_raw = image_tensor
+    elif dataset_name == "FFHQ_random_words_jitter":
+        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+        save_path = join(wordimg_root, "ffhq-64x64-random_word_jitter2-8.pt")
+        image_tensor = torch.load(save_path)
+        imgsize = 64
+        imgchannels = 3
+        Xtsr_raw = image_tensor
+    elif dataset_name == "ffhq-32x32":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = data_Xtsr
+    elif dataset_name == "ffhq-32x32-fix_words":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = data_Xtsr
+    elif dataset_name == "ffhq-32x32-random_word_jitter":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = data_Xtsr
+    elif dataset_name == "afhq-32x32":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = data_Xtsr
+
+    assert Xtsr_raw.shape[1] == imgchannels
+    assert Xtsr_raw.shape[2] == imgsize
+    assert Xtsr_raw.shape[3] == imgsize
+    print(f"{dataset_name} dataset: {len(Xtsr_raw)}")
+    print(f"value range" , (Xtsr_raw.max()), (Xtsr_raw.min()))
+    return Xtsr_raw, imgsize, imgchannels
+
 # %%
-
-from pprint import pprint
-import argparse
-from typing import List, Tuple
-def generate_record_times(ranges: List[Tuple[int, int, int]]) -> List[int]:
-    """
-    Generates a list of record times based on the provided ranges.
-
-    Args:
-        ranges (List[Tuple[int, int, int]]): List of ranges defined by (start, end, step).
-
-    Returns:
-        List[int]: Generated record times.
-    """
-    record_times = []
-    for start, end, step in ranges:
-        record_times.extend(range(start, end, step))
-    return record_times
-
-# %%
-
 from pprint import pprint
 import argparse
 from typing import List, Tuple
@@ -201,6 +229,22 @@ def parse_args():
     )
     return parser.parse_args()
 
+# %%
+# layers_per_block = 1
+# decoder_init_attn = True
+# attn_resolutions = [8, 16,]
+# model_channels = 64
+# channel_mult = [1, 2, 4, 4]
+# batch_size = 512
+# nsteps = 10000
+# lr = 1e-4
+# record_frequency = 100
+# exp_name = "ffhq64_edm_model_pilot"
+# eval_sample_size = 5000
+# eval_batch_size = 1024 # Process in batches of 1000
+
+# ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 64)]
+# record_times = generate_record_times(ranges)
 args = parse_args()
 dataset_name = args.dataset_name
 exp_name = args.exp_name
@@ -235,95 +279,7 @@ sample_dir = f"{savedir}/samples"
 os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
 device = get_device()
-
-import sys
-sys.path.append("/n/home12/binxuwang/Github/edm")
-from training.dataset import TensorDataset, ImageFolderDataset
-
-ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256"
-edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
-if dataset_name == "FFHQ":
-    edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
-    dataset = ImageFolderDataset(edm_ffhq64_path)
-    imgsize = 64
-    imgchannels = 3
-    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-elif dataset_name == "AFHQ":
-    edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
-    dataset = ImageFolderDataset(edm_afhq_path)
-    imgsize = 64
-    imgchannels = 3
-    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-elif dataset_name == "CIFAR":
-    edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
-    dataset = ImageFolderDataset(edm_cifar_path)
-    imgsize = 32
-    imgchannels = 3
-    Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-elif dataset_name == "words32x32_50k":
-    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-    image_tensor = torch.load(join(wordimg_root, "words32x32_50k.pt"))
-    text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_words.pkl"), "rb"))
-    imgsize = 32
-    imgchannels = 1
-    Xtsr_raw = image_tensor
-elif dataset_name == "FFHQ_fix_words":
-    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-    save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
-    image_tensor = torch.load(save_path)
-    imgsize = 64
-    imgchannels = 3
-    Xtsr_raw = image_tensor
-elif dataset_name == "FFHQ_random_words_jitter":
-    wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-    save_path = join(wordimg_root, "ffhq-64x64-random_word_jitter2-8.pt")
-    image_tensor = torch.load(save_path)
-    imgsize = 64
-    imgchannels = 3
-    Xtsr_raw = image_tensor
-elif dataset_name == "ffhq-32x32":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
-    imgsize = 32
-    imgchannels = 3
-    Xtsr_raw = data_Xtsr
-elif dataset_name == "ffhq-32x32-fix_words":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
-    imgsize = 32
-    imgchannels = 3
-    Xtsr_raw = data_Xtsr
-elif dataset_name == "ffhq-32x32-random_word_jitter":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
-    imgsize = 32
-    imgchannels = 3
-    Xtsr_raw = data_Xtsr
-elif dataset_name == "afhq-32x32":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
-    imgsize = 32
-    imgchannels = 3
-    Xtsr_raw = data_Xtsr
-
-assert Xtsr_raw.shape[1] == imgchannels
-assert Xtsr_raw.shape[2] == imgsize
-assert Xtsr_raw.shape[3] == imgsize
-print(f"{dataset_name} dataset: {len(Xtsr_raw)}")
-print(f"value range" , (Xtsr_raw.max()), (Xtsr_raw.min()))
-# %%
-# layers_per_block = 1
-# decoder_init_attn = True
-# attn_resolutions = [8, 16,]
-# model_channels = 64
-# channel_mult = [1, 2, 4, 4]
-# batch_size = 512
-# nsteps = 10000
-# lr = 1e-4
-# record_frequency = 100
-# exp_name = "ffhq64_edm_model_pilot"
-# eval_sample_size = 5000
-# eval_batch_size = 1024 # Process in batches of 1000
-
-# ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 64)]
-# record_times = generate_record_times(ranges)
-
+Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
 
 # %%
 # sample_store = {}
@@ -377,16 +333,13 @@ model_precd, loss_traj = train_score_model_custom_loss(Xtsr, model_precd, edm_lo
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
                                     callback=sampling_callback_fn, callback_freq=record_frequency, callback_step_list=record_times)
 
-
-# pkl.dump(sample_store, open(f"{savedir}/sample_store.pkl", "wb"))
 pkl.dump(loss_store, open(f"{savedir}/loss_store.pkl", "wb"))
 torch.save(model_precd.model.state_dict(), f"{savedir}/model_final.pth")
-
 
 noise_init = torch.randn(64, *imgshape).to(device)
 x_out, x_traj, x0hat_traj, t_steps = edm_sampler(model_precd, noise_init, 
                 num_steps=40, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
-mtg = to_imgrid(((x_out.cpu()[:64]+1)/2).clamp(0, 1), nrow=8, padding=1)
+mtg = to_imgrid(((x_out.cpu()[:]+1)/2).clamp(0, 1), nrow=8, padding=1)
 mtg.save(f"{savedir}/learned_samples_final.png")
 # %%
 
