@@ -170,7 +170,7 @@ def parse_args():
     parser.add_argument("--num_heads", type=int, default=12, help="Number of attention heads")
     parser.add_argument("--mlp_ratio", type=int, default=4, help="MLP ratio")
     parser.add_argument("--class_dropout_prob", type=float, default=0.1, help="Class dropout probability")
-    # note that class dropout prob need to be set to non zero, or the y embedding will not work be a (0, d) shaped embedding 
+    # NOTE: `class_dropout_prob` need to be non zero, or the y embedding will not work be a (0, d) shaped embedding 
     # evaluation hyper-parameters
     parser.add_argument("--eval_sample_size", type=int, default=1000, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=1024, help="Evaluation batch size")
