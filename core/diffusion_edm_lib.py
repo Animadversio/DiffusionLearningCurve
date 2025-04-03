@@ -81,7 +81,7 @@ class EDMDiTPrecondWrapper(nn.Module):
         
     def forward(self, X, sigma, cond=None, ):
         if cond is None:
-            cond = torch.zeros(X.shape[0],).long().to(X.device)
+            cond = torch.zeros(X.shape[0], device=X.device, dtype=torch.long)
         sigma[sigma == 0] = self.sigma_min
         ## edm preconditioning for input and output
         ## https://github.com/NVlabs/edm/blob/main/training/networks.py#L632

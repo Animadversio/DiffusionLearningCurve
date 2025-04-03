@@ -157,8 +157,8 @@ def generate_record_times(ranges: List[Tuple[int, int, int]]) -> List[int]:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="DiT Learning Curve Experiment")
-    parser.add_argument("--dataset_name", type=str, default="FFHQ", help="Dataset name")
-    parser.add_argument("--exp_name", type=str, default="FFHQ_DiT_CNN_EDM", help="Experiment name")
+    parser.add_argument("--dataset_name", type=str, default="ffhq-32x32", help="Dataset name")
+    parser.add_argument("--exp_name", type=str, default="FFHQ32_DiT_CNN_EDM", help="Experiment name")
     # training hyper-parameters
     parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--batch_size", type=int, default=256, help="Batch size")
@@ -169,7 +169,8 @@ def parse_args():
     parser.add_argument("--depth", type=int, default=12, help="Number of transformer blocks")
     parser.add_argument("--num_heads", type=int, default=12, help="Number of attention heads")
     parser.add_argument("--mlp_ratio", type=int, default=4, help="MLP ratio")
-    parser.add_argument("--class_dropout_prob", type=float, default=0.0, help="Class dropout probability")
+    parser.add_argument("--class_dropout_prob", type=float, default=0.1, help="Class dropout probability")
+    # note that class dropout prob need to be set to non zero, or the y embedding will not work be a (0, d) shaped embedding 
     # evaluation hyper-parameters
     parser.add_argument("--eval_sample_size", type=int, default=1000, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=1024, help="Evaluation batch size")
@@ -203,6 +204,12 @@ def parse_args():
 
 # ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 64)]
 # record_times = generate_record_times(ranges)
+# import json 
+# args = json.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/FFHQ32_DiT_P2_192D_3H_6L_EDM_pilot/args.json", "r"))
+# args = edict(args)
+# args.class_dropout_prob = 0.1
+
+
 args = parse_args()
 dataset_name = args.dataset_name
 exp_name = args.exp_name
