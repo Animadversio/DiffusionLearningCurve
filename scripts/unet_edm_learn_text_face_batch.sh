@@ -33,6 +33,6 @@ which python
 
 # run code
 cd /n/home12/binxuwang/Github/DiffusionLearningCurve
-python experiment/unet_FFHQ_learn_curve_CLI.py --record_frequency 0 \
+python experiment/CNN_unet_learn_curve_CLI.py --record_frequency 0 \
     $param_name
 
