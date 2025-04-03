@@ -20,21 +20,6 @@ from core.trajectory_convergence_lib import analyze_and_plot_variance
 from core.dataset_lib import load_dataset
 from circuit_toolkit.plot_utils import saveallforms
 
-
-cnn_experiments = [
-#     ("FFHQ", "FFHQ_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-#     ("FFHQ_fix_words", "FFHQ_fix_words_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-#     ("FFHQ_random_words_jitter", "FFHQ_random_words_jitter_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-    ("ffhq-32x32", "FFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-    ("ffhq-32x32-fix_words", "FFHQ32_fix_words_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-    ("ffhq-32x32-random_word_jitter", "FFHQ32_random_words_jitter_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-    ("afhq-32x32", "AFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
-    # ("CIFAR", "CIFAR_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm")
-]
-
-lr = 1e-4
-exproot = r"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/"
-# for dataset_name, expname in cnn_experiments:
 import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description='Post-hoc analysis of diffusion model training')
@@ -46,6 +31,16 @@ def parse_args():
                         help='Learning rate used during training (default: 1e-4)')
     return parser.parse_args()
 
+# cnn_experiments = [
+# #     ("FFHQ", "FFHQ_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+# #     ("FFHQ_fix_words", "FFHQ_fix_words_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+# #     ("FFHQ_random_words_jitter", "FFHQ_random_words_jitter_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+#     ("ffhq-32x32", "FFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+#     ("ffhq-32x32-fix_words", "FFHQ32_fix_words_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+#     ("ffhq-32x32-random_word_jitter", "FFHQ32_random_words_jitter_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+#     ("afhq-32x32", "AFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm"),
+#     # ("CIFAR", "CIFAR_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm")
+# ]
 
 args = parse_args()
 dataset_name = args.dataset
