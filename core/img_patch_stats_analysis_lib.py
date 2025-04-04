@@ -104,7 +104,9 @@ def process_img_mean_cov_statistics(train_images, sample_store, savedir, device=
         mean_x_sample_traj, cov_x_sample_traj, diag_cov_x_sample_true_eigenbasis_traj
 
 
-def extract_patches(images, patch_size, patch_stride):
+def extract_patches(images, patch_size, patch_stride, avg_channels=False):
+    if avg_channels:
+        images = images.mean(dim=1, keepdim=True)
     B, C, H, W = images.shape
     patches = images.unfold(2, patch_size, patch_stride).unfold(3, patch_size, patch_stride)
     patches = patches.contiguous().view(B, C, -1, patch_size, patch_size)
@@ -112,9 +114,9 @@ def extract_patches(images, patch_size, patch_stride):
     return patches
 
 
-def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch_size=8, patch_stride=4, device="cuda", imgshape=(3, 64, 64), save_pkl=True):
+def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch_size=8, patch_stride=4, device="cuda", imgshape=(3, 64, 64), save_pkl=True, avg_channels=False):
     # images = Xtsr.view(Xtsr.shape[0], *imgshape)
-    patches = extract_patches(train_images, patch_size=patch_size, patch_stride=patch_stride)
+    patches = extract_patches(train_images, patch_size=patch_size, patch_stride=patch_stride, avg_channels=avg_channels)
     patch_shape = patches.shape[1:]
     patch_dim = np.prod(patch_shape)
     patch_mean = patches.mean(dim=0)
@@ -133,7 +135,7 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
         x_final = sample_store[training_step]
         if isinstance(x_final, tuple):
             x_final = x_final[0]
-        x_final_patches = extract_patches(x_final.view(x_final.shape[0], *imgshape), patch_size=patch_size, patch_stride=patch_stride)
+        x_final_patches = extract_patches(x_final.view(x_final.shape[0], *imgshape), patch_size=patch_size, patch_stride=patch_stride, avg_channels=avg_channels)
         x_final_patches = x_final_patches.view(x_final_patches.shape[0], -1)
         mean_x_patch_sample = x_final_patches.mean(dim=0)
         cov_x_patch_sample = torch.cov(x_final_patches.to(device).T)
@@ -159,8 +161,8 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
         "patch_eigval": patch_eigval.cpu(),
         "patch_eigvec": patch_eigvec.cpu(),
         "step_slice": step_slice
-        }, open(f"{savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl", "wb"))
-        print(f"Saved to {savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj.pkl")
+        }, open(f"{savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}{'_avgchn' if avg_channels else ''}_cov_true_eigenbasis_diag_traj.pkl", "wb"))
+        print(f"Saved to {savedir}/sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}{'_avgchn' if avg_channels else ''}_cov_true_eigenbasis_diag_traj.pkl")
     return patch_mean, patch_cov, patch_eigval, patch_eigvec, mean_x_patch_sample_traj, cov_x_patch_sample_traj, diag_cov_x_patch_sample_true_eigenbasis_traj
     
 # Example usage:

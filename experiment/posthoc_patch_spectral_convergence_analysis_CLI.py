@@ -31,7 +31,8 @@ def parse_args():
                         help='Learning rate used during training (default: 1e-4)')
     parser.add_argument('--patch_params', type=int, nargs=2, action='append', default=[],
                         help='Tuple of patch size and patch stride. Specify multiple times for multiple tuples (e.g., --patch_params 4 4 --patch_params 8 8)')
-    
+    parser.add_argument('--avg_channels', action='store_true',
+                        help='Average channels (default: False)')
     # parser.add_argument('--patch_size', type=int, default=4,
     #                     help='Patch size (default: 4)')
     # parser.add_argument('--patch_stride', type=int, default=4,
@@ -43,6 +44,7 @@ args = parse_args()
 dataset_name = args.dataset
 expname = args.expname
 lr = args.lr
+avg_channels = args.avg_channels
 # patch_size, patch_stride = args.patch_size, args.patch_stride
 patch_params = args.patch_params
 exproot = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/"
@@ -71,10 +73,10 @@ for patch_size, patch_stride in patch_params:
     patch_mean, patch_cov, patch_eigval, patch_eigvec, mean_x_patch_sample_traj, cov_x_patch_sample_traj, diag_cov_x_patch_sample_true_eigenbasis_traj = \
         process_patch_mean_cov_statistics(Xtsr, sample_store, savedir, 
                                         patch_size=patch_size, patch_stride=patch_stride, 
-                                        imgshape=imgshape, save_pkl=False, device="cuda", )
+                                        imgshape=imgshape, save_pkl=False, device="cuda", avg_channels=avg_channels)
     pkl.dump({"step_slice": step_slice, "patch_mean": patch_mean, "patch_cov": patch_cov, "patch_eigval": patch_eigval, "patch_eigvec": patch_eigvec, 
                 "mean_x_patch_sample_traj": mean_x_patch_sample_traj, "diag_cov_x_patch_sample_true_eigenbasis_traj": diag_cov_x_patch_sample_true_eigenbasis_traj}, 
-        open(join(savedir, f"{dataset_name}_patch_{patch_size}x{patch_size}_stride_{patch_stride}_mean_cov_statistics.pkl"), "wb"))
+        open(join(savedir, f"{dataset_name}_patch_{patch_size}x{patch_size}_stride_{patch_stride}{'_avgchn' if avg_channels else ''}_mean_cov_statistics.pkl"), "wb"))
 
 
     for slice2plot in [slice(0, 9, 1), slice(0, 30, 3), slice(0, 100, 10), slice(5, 100, 10), slice(2, 500, 50), slice(0, 1000, 100), slice(2, 3000, 300)]:
