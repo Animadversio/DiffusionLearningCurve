@@ -45,8 +45,56 @@ class EDMPrecondWrapper(nn.Module):
         c_noise = sigma.log() / 4
         model_out = self.model(c_in * X, c_noise, cond=cond)
         return c_skip * X + c_out * model_out
-    
-    
+
+
+class EDMCNNPrecondWrapper(nn.Module):
+    def __init__(self, model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0):
+        super().__init__()
+        self.model = model
+        self.sigma_data = sigma_data
+        self.sigma_min = sigma_min
+        self.sigma_max = sigma_max
+        self.rho = rho
+        
+    def forward(self, X, sigma, cond=None, ):
+        sigma[sigma == 0] = self.sigma_min
+        ## edm preconditioning for input and output
+        ## https://github.com/NVlabs/edm/blob/main/training/networks.py#L632
+        # unsqueze sigma to have same dimension as X (which may have 2-4 dim) 
+        sigma_vec = sigma.view([-1, ] + [1, ] * (X.ndim - 1))
+        c_skip = self.sigma_data ** 2 / (sigma_vec ** 2 + self.sigma_data ** 2)
+        c_out = sigma_vec * self.sigma_data / (sigma_vec ** 2 + self.sigma_data ** 2).sqrt()
+        c_in = 1 / (self.sigma_data ** 2 + sigma_vec ** 2).sqrt()
+        c_noise = sigma.log() / 4
+        model_out = self.model(c_in * X, c_noise.view(-1), cond=cond) # this is required for EDM Unet model. 
+        return c_skip * X + c_out * model_out
+
+
+class EDMDiTPrecondWrapper(nn.Module):
+    def __init__(self, model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0):
+        super().__init__()
+        self.model = model
+        self.sigma_data = sigma_data
+        self.sigma_min = sigma_min
+        self.sigma_max = sigma_max
+        self.rho = rho
+        
+    def forward(self, X, sigma, cond=None, ):
+        if cond is None:
+            cond = torch.zeros(X.shape[0], device=X.device, dtype=torch.long)
+        sigma[sigma == 0] = self.sigma_min
+        ## edm preconditioning for input and output
+        ## https://github.com/NVlabs/edm/blob/main/training/networks.py#L632
+        # unsqueze sigma to have same dimension as X (which may have 2-4 dim) 
+        sigma_vec = sigma.view([-1, ] + [1, ] * (X.ndim - 1))
+        c_skip = self.sigma_data ** 2 / (sigma_vec ** 2 + self.sigma_data ** 2)
+        c_out = sigma_vec * self.sigma_data / (sigma_vec ** 2 + self.sigma_data ** 2).sqrt()
+        c_in = 1 / (self.sigma_data ** 2 + sigma_vec ** 2).sqrt()
+        c_noise = sigma.log() / 4
+        model_out = self.model(c_in * X, c_noise.view(-1), y=cond) # this is required for EDM Unet model. 
+        return c_skip * X + c_out * model_out
+
+
 import sys
 sys.path.append("..")
 from core.diffusion_nn_lib import UNetMLPBlock, GaussianFourierProjection, UNetBlockStyleMLP_backbone
