@@ -144,8 +144,18 @@ class GaussianMixture_torch:
           probability density (PDF) at $x$.
         """
         component_pdf = torch.stack([rv.log_prob(x) for rv in self.RVs]).exp().T
-        prob = torch.dot(component_pdf, self.norm_weights)
+        prob = component_pdf @ self.norm_weights
+        # prob = torch.dot(component_pdf, self.norm_weights) # bug fixed, this will fail for batched x. 
         return prob
+    
+    def log_pdf(self, x):
+        """
+          log probability density (PDF) at $x$.
+        """
+        component_logpdf = torch.stack([rv.log_prob(x) for rv in self.RVs]).T
+        log_weights = torch.log(self.norm_weights)
+        logprob = torch.logsumexp(component_logpdf + log_weights, dim=1)
+        return logprob
 
     def score(self, x):
         """
