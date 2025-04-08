@@ -201,6 +201,30 @@ def generate_record_times(ranges: List[Tuple[int, int, int]]) -> List[int]:
     return record_times
 
 
+def generate_ckpt_step_list(max_steps, num_ckpts=100, sequence="geomspace") -> List[int]:
+    """
+    Generates a list of record times based on the provided ranges.
+
+    Args:
+        ranges (List[Tuple[int, int, int]]): List of ranges defined by (start, end, step).
+
+    Returns:
+        List[int]: Generated record times.
+    """
+    if sequence == "geomspace":
+        # ckpt_step_list = np.unique(np.logspace(np.log10(1), np.log10(max_steps+1), num_ckpts).astype(int))
+        ckpt_step_list = np.geomspace(1, max_steps+1, num_ckpts).astype(int)
+        ckpt_step_list = np.unique(ckpt_step_list)
+        ckpt_step_list = ckpt_step_list[ckpt_step_list <= max_steps]
+    elif sequence == "linspace":
+        ckpt_step_list = np.linspace(1, max_steps, num_ckpts).astype(int)
+        ckpt_step_list = np.unique(ckpt_step_list)
+        ckpt_step_list = ckpt_step_list[ckpt_step_list <= max_steps]
+    else:
+        raise ValueError(f"Invalid sequence type: {sequence}")
+    return ckpt_step_list
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="UNet Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="FFHQ", help="Dataset name")
@@ -216,6 +240,7 @@ def parse_args():
     parser.add_argument("--eval_sample_size", type=int, default=1000, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=1024, help="Evaluation batch size")
     parser.add_argument("--eval_sampling_steps", type=int, default=35, help="Evaluation sampling steps")
+    parser.add_argument("--eval_fix_noise_seed", action="store_true", help="Evaluation fix noise seed")
     parser.add_argument("--record_frequency", type=int, default=0, help="Evaluation sample frequency")
     parser.add_argument(
         '-r', '--record_step_range',
@@ -227,6 +252,8 @@ def parse_args():
         default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)],#
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
     )
+    parser.add_argument("--save_ckpts", action="store_true", help="Save checkpoint trajectory")
+    parser.add_argument("--num_ckpts", type=int, default=100, help="Number of checkpoints")
     return parser.parse_args()
 
 # %%
@@ -259,8 +286,12 @@ lr = args.lr
 eval_sample_size = args.eval_sample_size
 eval_batch_size = args.eval_batch_size
 eval_sampling_steps = args.eval_sampling_steps
+eval_fix_noise_seed = args.eval_fix_noise_seed
 record_frequency = args.record_frequency
 record_step_range = args.record_step_range
+save_ckpts = args.save_ckpts
+num_ckpts = args.num_ckpts
+ckpt_step_list = generate_ckpt_step_list(nsteps, num_ckpts=num_ckpts, sequence="geomspace")
 ranges = []
 for r in record_step_range:
     try:
@@ -276,9 +307,10 @@ print(f"record_times: {record_times}")
 saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 savedir = f"{saveroot}/{exp_name}"
 sample_dir = f"{savedir}/samples"
+ckpt_dir = f"{savedir}/ckpts"
 os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
-device = get_device()
+os.makedirs(ckpt_dir, exist_ok=True)
 Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
 
 # %%
@@ -288,11 +320,17 @@ loss_store = {}
 def sampling_callback_fn(epoch, loss, model):
     loss_store[epoch] = loss
     x_out_batches = []
+    if eval_fix_noise_seed:
+        noise_init_all = torch.randn(eval_sample_size, *imgshape, generator=torch.Generator().manual_seed(0))
+    else:
+        noise_init_all = torch.randn(eval_sample_size, *imgshape)
     for i in range(0, eval_sample_size, eval_batch_size):
         batch_size_i = min(eval_batch_size, eval_sample_size - i)
-        noise_init = torch.randn(batch_size_i, *imgshape).to(device)
-        x_out_i, x_traj_i, x0hat_traj_i, t_steps_i = edm_sampler(model, noise_init,
-                        num_steps=eval_sampling_steps, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
+        noise_init = noise_init_all[i:i+batch_size_i].to(device)
+        x_out_i = edm_sampler(model, noise_init, num_steps=eval_sampling_steps, 
+                        sigma_min=0.002, sigma_max=80, rho=7, return_traj=False)
+        # x_out_i, x_traj_i, x0hat_traj_i, t_steps_i = edm_sampler(model, noise_init,
+        #                 num_steps=eval_sampling_steps, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
         x_out_batches.append(x_out_i)
     
     x_out = torch.cat(x_out_batches, dim=0)
@@ -331,9 +369,11 @@ model_precd = EDMCNNPrecondWrapper(unet, sigma_data=0.5, sigma_min=0.002, sigma_
 edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
 model_precd, loss_traj = train_score_model_custom_loss(Xtsr, model_precd, edm_loss_fn, 
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
-                                    callback=sampling_callback_fn, callback_freq=record_frequency, callback_step_list=record_times)
+                                    callback=sampling_callback_fn, callback_freq=record_frequency, callback_step_list=record_times,
+                                    save_ckpts=save_ckpts, ckpt_dir=ckpt_dir, save_ckpt_step_list=ckpt_step_list)
 
 pkl.dump(loss_store, open(f"{savedir}/loss_store.pkl", "wb"))
+pkl.dump(loss_traj, open(f"{savedir}/loss_traj.pkl", "wb"))
 torch.save(model_precd.model.state_dict(), f"{savedir}/model_final.pth")
 
 noise_init = torch.randn(64, *imgshape).to(device)
