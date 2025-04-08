@@ -6,7 +6,6 @@
 %load_ext autoreload
 %autoreload 2
 
-
 # %%
 import sys
 import os
@@ -31,9 +30,11 @@ from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import *
 from core.network_edm_lib import SongUNet, DhariwalUNet
 from core.DiT_model_lib import *
-from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
 from core.diffusion_nn_lib import UNetBlockStyleMLP_backbone
+from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
 from pprint import pprint
+
+saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 
 # %%
 def find_largest_ckpt_step(ckptdir, verbose=True):
@@ -56,108 +57,9 @@ def find_all_ckpt_steps(ckptdir, verbose=True):
         print(f"Found {len(ckpt_steps)} checkpoints in the directory, largest step is {max(ckpt_steps)}")
     return sorted(ckpt_steps)
 
-# %%
-saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 
-# %% [markdown]
-# ### Loading CNN
-
-# %%
-def create_unet_model(config):
-    unet = SongUNet(in_channels=config.channels, 
-                out_channels=config.channels, 
-                num_blocks=config.layers_per_block, 
-                attn_resolutions=config.attn_resolutions, 
-                decoder_init_attn=config.decoder_init_attn if 'decoder_init_attn' in config else True,
-                model_channels=config.model_channels, 
-                channel_mult=config.channel_mult, 
-                dropout=config.dropout, 
-                img_resolution=config.img_size, 
-                label_dim=config.label_dim,
-                embedding_type='positional', 
-                encoder_type='standard', 
-                decoder_type='standard', 
-                augment_dim=config.augment_dim, #  no augmentation , 9 for defaults. 
-                channel_mult_noise=1, 
-                resample_filter=[1,1], 
-                )
-    pytorch_total_grad_params = sum(p.numel() for p in unet.parameters() if p.requires_grad)
-    print(f'total number of trainable parameters in the Score Model: {pytorch_total_grad_params}')
-    pytorch_total_params = sum(p.numel() for p in unet.parameters())
-    print(f'total number of parameters in the Score Model: {pytorch_total_params}')
-    return unet
-
-# %%
-# loading config 
-expname = "FFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample"
-savedir = join(saveroot, expname)
-ckptdir = join(savedir, "ckpts")
-sample_dir = join(savedir, "samples")
-config = edict(json.load(open(f"{savedir}/config.json")))
-args = edict(json.load(open(f"{savedir}/args.json")))
-pprint(config)
-unet = create_unet_model(config)
-CNN_precd = EDMCNNPrecondWrapper(unet, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
-
-# %%
-# ckpt_step = 9705
-ckpt_step = find_largest_ckpt_step(ckptdir)
-ckpt_path = join(ckptdir, f"model_epoch_{ckpt_step:06d}.pth")
-CNN_precd.load_state_dict(torch.load(ckpt_path))
-
-device = "cuda"
-CNN_precd = CNN_precd.to(device).eval()
-CNN_precd.requires_grad_(False);
-
-# %% [markdown]
-# #### Demo of gradient map
-
-# %%
-imgshape = (3, 32, 32)
-# %%
-# Define a function that computes the score for a single point.
-# Note: Do not modify x (i.e. no .requires_grad_() inside) – jacrev will handle it.
-def compute_score(x):
-    t_sigma = sigma * torch.ones(1, device=x.device)
-    x = x.view(*imgshape)
-    # model_precd expects input of shape (1, 2) and t_sigma of shape (1,)
-    denoised = CNN_precd(x.unsqueeze(0), t_sigma)
-    # denoised = CNN_precd.model(x.unsqueeze(0), t_sigma, cond=None)
-    score = (denoised - x.unsqueeze(0)) / t_sigma[:, None]
-    return score[0]  # Return a 2D vector
-
-
-def compute_denoiser(x):
-    t_sigma = sigma * torch.ones(1, device=x.device)
-    # model_precd expects input of shape (1, 2) and t_sigma of shape (1,)
-    denoised = CNN_precd(x.view(1, *imgshape), t_sigma)
-    return denoised[0]  # Return a 2D vector
-
-imgshape = (3, 32, 32)
-sigma = 0.002
-# comput gradient from certain output pixel to the input 
-output_map = torch.zeros( *imgshape).to(device)
-output_map[:, 5, 5] = 1
-output_vec = output_map.view(-1)
-x_probe = sigma * torch.randn(*imgshape).to(device)
-x_probe.requires_grad_(True)
-scalar = (output_map * compute_denoiser(x_probe)).sum()
-scalar.backward()
-jacobian = x_probe.grad 
-
-# %%
-plt.imshow(jacobian.detach().cpu().abs().mean(0), cmap="gray")
-plt.colorbar()
-plt.show()
-
-# %% [markdown]
-# #### Function form of analysis
-
-# %%
 # Refactored functions for visualizing gradient maps
-import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
-import torch
 
 def compute_gradient_map(model, x_shape, sigma_val, output_coords, device, target="denoiser"):
     """
@@ -205,6 +107,7 @@ def compute_gradient_map(model, x_shape, sigma_val, output_coords, device, targe
     scalar.backward()
     # Return the gradient
     return x_probe.grad.detach().cpu()
+
 
 def visualize_gradient_maps(model, x_shape, sigma_values, output_coords=None, target="denoiser",
                            device='cuda', reduction='abs_mean', figsize=(14, 14)):
@@ -291,11 +194,52 @@ def visualize_gradient_maps(model, x_shape, sigma_values, output_coords=None, ta
     return fig, gradient_maps
 
 
+
+# %%
+# %% [markdown]
+# ### Loading CNN
+#%%
+def create_unet_model(config):
+    unet = SongUNet(in_channels=config.channels, 
+                out_channels=config.channels, 
+                num_blocks=config.layers_per_block, 
+                attn_resolutions=config.attn_resolutions, 
+                decoder_init_attn=config.decoder_init_attn if 'decoder_init_attn' in config else True,
+                model_channels=config.model_channels, 
+                channel_mult=config.channel_mult, 
+                dropout=config.dropout, 
+                img_resolution=config.img_size, 
+                label_dim=config.label_dim,
+                embedding_type='positional', 
+                encoder_type='standard', 
+                decoder_type='standard', 
+                augment_dim=config.augment_dim, #  no augmentation , 9 for defaults. 
+                channel_mult_noise=1, 
+                resample_filter=[1,1], 
+                )
+    pytorch_total_grad_params = sum(p.numel() for p in unet.parameters() if p.requires_grad)
+    print(f'total number of trainable parameters in the Score Model: {pytorch_total_grad_params}')
+    pytorch_total_params = sum(p.numel() for p in unet.parameters())
+    print(f'total number of parameters in the Score Model: {pytorch_total_params}')
+    return unet
+
+# %%
+# loading config 
+expname = "FFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample"
+savedir = join(saveroot, expname)
+ckptdir = join(savedir, "ckpts")
+sample_dir = join(savedir, "samples")
+config = edict(json.load(open(f"{savedir}/config.json")))
+args = edict(json.load(open(f"{savedir}/args.json")))
+pprint(config)
+unet = create_unet_model(config)
+CNN_precd = EDMCNNPrecondWrapper(unet, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
+# %% [markdown]
+# #### Demo of gradient map
 # %% [markdown]
 # #### Gradient Map of CNN Unet denoisers
 
 # %%
-from circuit_toolkit.plot_utils import saveallforms
 imgshape = (3, 32, 32)
 figdir = join(savedir, "gradient_maps")
 os.makedirs(figdir, exist_ok=True)
@@ -320,9 +264,10 @@ for ckpt_step in ckpt_step_list:
     plt.close("all")
 
 
+
+
 # %% [markdown]
 # ### Loading MLP
-
 # %%
 # loading config 
 expname = "FFHQ32_UNet_MLP_EDM_8L_3072D_lr1e-4_saveckpt_fewsample"
@@ -361,35 +306,8 @@ for ckpt_step in ckpt_step_list:
     plt.close("all")
 
 
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(MLP_precd_img, imgshape, sigma_values, target="denoiser");#output_coords=(None, 28, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(MLP_precd_img, imgshape, sigma_values, target="denoiser", output_coords=(None, 5, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(MLP_precd_img, imgshape, sigma_values, target="denoiser", output_coords=(None, 28, 28));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(MLP_precd_img, imgshape, sigma_values, target="denoiser", output_coords=(None, 15, 10));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(MLP_precd_img, imgshape, sigma_values, target="denoiser", output_coords=(None, 15, 20));
-
 # %% [markdown]
 # ### Loading DiT
-
-# %%
 # loading config 
 expname = "FFHQ32_DiT_P2_192D_3H_6L_EDM_saveckpt_fewsample"
 savedir = join(saveroot, expname)
@@ -400,58 +318,34 @@ args = edict(json.load(open(f"{savedir}/args.json")))
 pprint(config)
 DiT_model = DiT(**config)
 DiT_precd = EDMDiTPrecondWrapper(DiT_model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
-
-# %%
-# ckpt_step = 1357
 # Find the largest checkpoint step in the directory
-ckpt_step = find_largest_ckpt_step(ckptdir)
-ckpt_path = join(ckptdir, f"model_epoch_{ckpt_step:06d}.pth")
-DiT_precd.load_state_dict(torch.load(ckpt_path))
+# ckpt_step = find_largest_ckpt_step(ckptdir)
+# device = "cuda"
+# ckpt_path = join(ckptdir, f"model_epoch_{ckpt_step:06d}.pth")
+# DiT_precd.load_state_dict(torch.load(ckpt_path))
+# DiT_precd = DiT_precd.to(device).eval()
+# DiT_precd.requires_grad_(False);
 
 # %%
-device = "cuda"
-DiT_precd = DiT_precd.to(device).eval()
-DiT_precd.requires_grad_(False);
-
-# %% [markdown]
-# #### Gradient Map of DiT denoisers
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser");#output_coords=(None, 28, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 5, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 28, 28));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 23, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 15, 5));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 15, 10));
-
-# %%
-# Example usage:
-sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
-grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, target="denoiser", output_coords=(None, 15, 20));
-
-# %%
-
-
+figdir = join(savedir, "gradient_maps")
+os.makedirs(figdir, exist_ok=True)
+ckpt_step_list = find_all_ckpt_steps(ckptdir)
+for ckpt_step in ckpt_step_list:
+    ckpt_path = join(ckptdir, f"model_epoch_{ckpt_step:06d}.pth")
+    DiT_precd.load_state_dict(torch.load(ckpt_path))
+    DiT_precd = DiT_precd.to(device).eval()
+    DiT_precd.requires_grad_(False);
+    
+    sigma_values = [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
+    fig, grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, output_coords=(None, 15, 15), target="denoiser");
+    saveallforms(figdir, f"gradient_map_DiT_denoiser_ckpt_{ckpt_step:06d}_pos_15_15", fig)
+    fig, grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, output_coords=(None, 15, 10), target="denoiser");
+    saveallforms(figdir, f"gradient_map_DiT_denoiser_ckpt_{ckpt_step:06d}_pos_15_10", fig)
+    fig, grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, output_coords=(None, 15, 20), target="denoiser");
+    saveallforms(figdir, f"gradient_map_DiT_denoiser_ckpt_{ckpt_step:06d}_pos_15_20", fig)
+    fig, grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, output_coords=(None, 5, 5), target="denoiser");
+    saveallforms(figdir, f"gradient_map_DiT_denoiser_ckpt_{ckpt_step:06d}_pos_5_5", fig)
+    fig, grad_maps = visualize_gradient_maps(DiT_precd, imgshape, sigma_values, output_coords=(None, 28, 28), target="denoiser");
+    saveallforms(figdir, f"gradient_map_DiT_denoiser_ckpt_{ckpt_step:06d}_pos_28_28", fig)
+    plt.close("all")
 
