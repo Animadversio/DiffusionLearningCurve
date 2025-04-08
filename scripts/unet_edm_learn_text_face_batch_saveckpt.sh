@@ -4,7 +4,7 @@
 #SBATCH -c 16               # Number of cores (-c)
 #SBATCH --mem=75G           # Memory pool for all cores (see also --mem-per-cpu)
 #SBATCH --gres=gpu:1
-#SBATCH --array 4
+#SBATCH --array 5
 #SBATCH -o unet_edm_learn_saveckpt_%A_%a.out  # File to which STDOUT will be written, %j inserts jobid
 #SBATCH -e unet_edm_learn_saveckpt_%A_%a.err  # File to which STDERR will be written, %j inserts jobid
 #SBATCH --mail-user=binxu_wang@hms.harvard.edu
@@ -15,6 +15,7 @@ param_list=\
 --dataset_name  afhq-32x32                      --exp_name AFHQ32_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample         --record_step_range 0 50000 500      --eval_sample_size 2000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8  --decoder_init_attn True
 --dataset_name  CIFAR                           --exp_name CIFAR_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample          --record_step_range 0 50000 500      --eval_sample_size 2000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8  --decoder_init_attn True
 --dataset_name  words32x32_50k                  --exp_name words32x32_50k_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample          --record_step_range 0 50000 500      --eval_sample_size 2000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8  --decoder_init_attn True
+--dataset_name  words32x32_50k_BW               --exp_name words32x32_50k_BW_UNet_CNN_EDM_4blocks_wide128_attn_saveckpt_fewsample          --record_step_range 0 50000 500      --eval_sample_size 2000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8  --decoder_init_attn True
 '
 # --dataset_name  ffhq-32x32-fix_words            --exp_name FFHQ32_fix_words_UNet_CNN_EDM_4blocks_wide128_attn_fixednorm             --decoder_init_attn True  --eval_sample_size 1000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8 
 # --dataset_name  ffhq-32x32-random_word_jitter   --exp_name FFHQ32_random_words_jitter_UNet_CNN_EDM_4blocks_wide128_attn_pilot_fixednorm   --decoder_init_attn True  --eval_sample_size 1000 --eval_batch_size 512  --lr 1e-4 --nsteps 50000 --batch_size 256  --model_channels 128 --channel_mult 1 2 2 2 --attn_resolutions 8 
