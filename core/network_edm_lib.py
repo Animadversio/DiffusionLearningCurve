@@ -100,10 +100,20 @@ class GroupNorm(torch.nn.Module):
 # inputs/outputs/gradients to conserve memory.
 
 class AttentionOp(torch.autograd.Function):
+    # Note this is an equivalent implementation of origional AttentionOp, but allows for vmap jvp. https://pytorch.org/docs/stable/notes/extending.html#extending-autograd
+    generate_vmap_rule = True  # Instruct functorch to auto-generate a vmap rule.
+    
     @staticmethod
-    def forward(ctx, q, k):
-        w = torch.einsum('ncq,nck->nqk', q.to(torch.float32), (k / np.sqrt(k.shape[1])).to(torch.float32)).softmax(dim=2).to(q.dtype)
+    def setup_context(ctx, inputs, output):
+        # No additional context needed for functorch transforms.
+        q, k = inputs
+        w = output
         ctx.save_for_backward(q, k, w)
+
+    @staticmethod
+    def forward(q, k):
+        w = torch.einsum('ncq,nck->nqk', q.to(torch.float32), (k / np.sqrt(k.shape[1])).to(torch.float32)).softmax(dim=2).to(q.dtype)
+        # ctx.save_for_backward(q, k, w)
         return w
 
     @staticmethod
