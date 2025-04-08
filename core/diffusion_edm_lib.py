@@ -162,7 +162,7 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         if callback_step_list is not None and (ep + 1) in callback_step_list:
             # If callback_step_list is set, call callback for the list of steps in callback_step_list
             return True
-        if save_ckpts and (ep in save_ckpt_step_list or ep == nepochs - 1 or ep == 0):
+        if save_ckpts and (ep in save_ckpt_step_list):
             return True
         return False
 
