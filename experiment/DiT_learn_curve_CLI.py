@@ -199,7 +199,7 @@ def parse_args():
     parser.add_argument("--eval_sample_size", type=int, default=1000, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=1024, help="Evaluation batch size")
     parser.add_argument("--eval_sampling_steps", type=int, default=35, help="Evaluation sampling steps")
-    parser.add_argument("--eval_fix_noise_seed", type=bool, default=True, help="Fix noise seed for evaluation")
+    parser.add_argument("--eval_fix_noise_seed", action="store_true", help="Evaluation fix noise seed")
     parser.add_argument("--record_frequency", type=int, default=0, help="Evaluation sample frequency")
     parser.add_argument(
         '-r', '--record_step_range',
