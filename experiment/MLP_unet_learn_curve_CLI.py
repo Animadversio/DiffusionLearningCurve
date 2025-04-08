@@ -243,8 +243,17 @@ device = get_device()
 pnts = data_Xtsr.view(data_Xtsr.shape[0], -1).to(device)
 pnts = (pnts - 0.5) / 0.5
 ndim = pnts.shape[1]
-cov_empirical = torch.cov(pnts.T, correction=1)
+# cov_empirical = torch.cov(pnts.T, correction=1)
 print(f"Dataset {pnts.shape[0]} samples, {ndim} features")
+
+config = edict(
+    ndim=ndim,
+    nlayers=mlp_layers,
+    nhidden=mlp_hidden_dim,
+    time_embed_dim=mlp_time_embed_dim,
+)
+pprint(config)
+json.dump(config, open(f"{savedir}/config.json", "w"))
 model = UNetBlockStyleMLP_backbone(ndim=ndim, nlayers=mlp_layers, nhidden=mlp_hidden_dim, time_embed_dim=mlp_time_embed_dim,)
 model_precd = EDMPrecondWrapper(model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
 edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
