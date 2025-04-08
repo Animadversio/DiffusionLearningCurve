@@ -249,7 +249,8 @@ def parse_args():
         nargs=3,
         action='append',
         # default=[(0, 10, 2), (10, 50, 4), (50, 100, 8), (100, 500, 16), (500, 2500, 32), (2500, 5000, 64), (5000, 10000, 128), (10000, 50000, 256)],#
-        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)],#
+        # default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)],#
+        default=[],
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
     )
     parser.add_argument("--save_ckpts", action="store_true", help="Save checkpoint trajectory")
@@ -288,17 +289,23 @@ eval_batch_size = args.eval_batch_size
 eval_sampling_steps = args.eval_sampling_steps
 eval_fix_noise_seed = args.eval_fix_noise_seed
 record_frequency = args.record_frequency
-record_step_range = args.record_step_range
 save_ckpts = args.save_ckpts
 num_ckpts = args.num_ckpts
 ckpt_step_list = generate_ckpt_step_list(nsteps, num_ckpts=num_ckpts, sequence="geomspace")
-ranges = []
-for r in record_step_range:
-    try:
-        parsed_range = parse_range(r)
-        ranges.append(parsed_range)
-    except argparse.ArgumentTypeError as e:
-        raise argparse.ArgumentTypeError(str(e))
+if args.record_step_range is None or len(args.record_step_range) == 0:
+    print("using default record step range")
+    ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)]
+    record_step_range = ranges
+else:
+    record_step_range = args.record_step_range
+    ranges = []
+    for r in record_step_range:
+        try:
+            parsed_range = parse_range(r)
+            ranges.append(parsed_range)
+        except argparse.ArgumentTypeError as e:
+            raise argparse.ArgumentTypeError(str(e))
+        
 record_times = generate_record_times(ranges)
 print(f"record_frequency: {record_frequency}")
 print(f"record_step_range: {record_step_range}")
