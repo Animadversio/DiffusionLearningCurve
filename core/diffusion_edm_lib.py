@@ -131,7 +131,10 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
                    device="cpu",
                    callback=None,
                    callback_freq=100,
-                   callback_step_list=[]):
+                   callback_step_list=[],
+                   save_ckpts=False,
+                   save_ckpt_step_list=[],
+                   ckpt_dir=None):
     """
     Trains a score model using a custom loss function with an optional callback.
 
@@ -151,10 +154,15 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
     """
     def check_callback_step(ep):
         if ep == nepochs - 1 or ep == 0:
+            # always call callback for the first and last epoch
             return True
         if callback_freq is not None and callback_freq > 0 and (ep + 1) % callback_freq == 0:
+            # If callback_freq is set, call callback every callback_freq epochs
             return True
         if callback_step_list is not None and (ep + 1) in callback_step_list:
+            # If callback_step_list is set, call callback for the list of steps in callback_step_list
+            return True
+        if save_ckpts and (ep in save_ckpt_step_list or ep == nepochs - 1 or ep == 0):
             return True
         return False
 
@@ -183,6 +191,9 @@ def train_score_model_custom_loss(X_train_tsr, score_model_td, loss_fn,
         # Invoke callback if specified and if epoch matches the frequency
         if callback is not None and check_callback_step(ep):
             callback(epoch=ep + 1, loss=loss.item(), model=score_model_td)
+        
+        if save_ckpts and (ep in save_ckpt_step_list or ep == nepochs - 1 or ep == 0):
+            torch.save(score_model_td.state_dict(), f"{ckpt_dir}/model_epoch_{ep:06d}.pth")
         
     return score_model_td, loss_traj
 
