@@ -31,6 +31,41 @@ def get_device():
     return device
 
 
+def load_raw_dataset(dataset_name):
+    if dataset_name == "words32x32_50k":
+        image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k.pt")
+        text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_words.pkl", "rb"))
+        data_Xtsr = image_tensor
+    elif dataset_name == "MNIST":
+        mnist_dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
+                                            train=True, download=True, transform=transforms.ToTensor())
+        mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
+        data_Xtsr = mnist_Xtsr
+    elif dataset_name == "ffhq-32x32":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
+        imgshape = data_Xtsr.shape[1:]
+    elif dataset_name == "ffhq-32x32-fix_words":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
+        imgshape = data_Xtsr.shape[1:]
+    elif dataset_name == "ffhq-32x32-random_word_jitter":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
+        imgshape = data_Xtsr.shape[1:]
+    elif dataset_name == "afhq-32x32":
+        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
+        imgshape = data_Xtsr.shape[1:]
+    elif dataset_name == "CIFAR":
+        import sys
+        sys.path.append("/n/home12/binxuwang/Github/edm")
+        from training.dataset import ImageFolderDataset
+        edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+        edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+        dataset = ImageFolderDataset(edm_cifar_path)
+        data_Xtsr = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+        imgshape = data_Xtsr.shape[1:]
+    else:
+        raise ValueError(f"Dataset {dataset_name} not found")
+    return data_Xtsr, imgshape
+
 from pprint import pprint
 import argparse
 from typing import List, Tuple
@@ -76,6 +111,30 @@ def generate_record_times(ranges: List[Tuple[int, int, int]]) -> List[int]:
     return record_times
 
 
+def generate_ckpt_step_list(max_steps, num_ckpts=100, sequence="geomspace") -> List[int]:
+    """
+    Generates a list of record times based on the provided ranges.
+
+    Args:
+        ranges (List[Tuple[int, int, int]]): List of ranges defined by (start, end, step).
+
+    Returns:
+        List[int]: Generated record times.
+    """
+    if sequence == "geomspace":
+        # ckpt_step_list = np.unique(np.logspace(np.log10(1), np.log10(max_steps+1), num_ckpts).astype(int))
+        ckpt_step_list = np.geomspace(1, max_steps+1, num_ckpts).astype(int)
+        ckpt_step_list = np.unique(ckpt_step_list)
+        ckpt_step_list = ckpt_step_list[ckpt_step_list <= max_steps]
+    elif sequence == "linspace":
+        ckpt_step_list = np.linspace(1, max_steps, num_ckpts).astype(int)
+        ckpt_step_list = np.unique(ckpt_step_list)
+        ckpt_step_list = ckpt_step_list[ckpt_step_list <= max_steps]
+    else:
+        raise ValueError(f"Invalid sequence type: {sequence}")
+    return ckpt_step_list
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="UNet Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="words32x32_50k", help="Dataset name")
@@ -89,6 +148,7 @@ def parse_args():
     parser.add_argument("--eval_sample_size", type=int, default=2048, help="Evaluation sample size")
     parser.add_argument("--eval_batch_size", type=int, default=2048, help="Evaluation batch size")
     parser.add_argument("--eval_sampling_steps", type=int, default=40, help="Evaluation sampling steps")
+    parser.add_argument("--eval_fix_noise_seed", type=bool, default=True, help="Fix noise seed for evaluation")
     parser.add_argument("--record_frequency", type=int, default=0, help="Evaluation sample frequency")
     parser.add_argument(
         '-r', '--record_step_range',
@@ -97,9 +157,12 @@ def parse_args():
         nargs=3,
         action='append',
         # default=[(0, 10, 2), (10, 50, 4), (50, 100, 8), (100, 500, 16), (500, 2500, 32), (2500, 5000, 64), (5000, 10000, 128), (10000, 50000, 256)],#
-        default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256), (50000, 100000, 512)],#
+        # default=[(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256), (50000, 100000, 512)],#
+        default=[],
         help="Define a range with start, end, and step. Can be used multiple times. Evaluation sample frequency"
-    )
+    )   
+    parser.add_argument("--save_ckpts", action="store_true", help="Save checkpoint trajectory")
+    parser.add_argument("--num_ckpts", type=int, default=100, help="Number of checkpoints")
     return parser.parse_args()
 
 args = parse_args()
@@ -114,15 +177,26 @@ lr = args.lr
 eval_sample_size = args.eval_sample_size
 eval_batch_size = args.eval_batch_size
 eval_sampling_steps = args.eval_sampling_steps
+eval_fix_noise_seed = args.eval_fix_noise_seed
 record_frequency = args.record_frequency
 record_step_range = args.record_step_range
-ranges = []
-for r in record_step_range:
-    try:
-        parsed_range = parse_range(r)
-        ranges.append(parsed_range)
-    except argparse.ArgumentTypeError as e:
-        raise argparse.ArgumentTypeError(str(e))
+save_ckpts = args.save_ckpts
+num_ckpts = args.num_ckpts
+ckpt_step_list = generate_ckpt_step_list(nsteps, num_ckpts=num_ckpts, sequence="geomspace")
+if args.record_step_range is None or len(args.record_step_range) == 0:
+    print("using default record step range")
+    ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256), (50000, 100000, 512)]
+    record_step_range = ranges
+else:
+    record_step_range = args.record_step_range
+    ranges = []
+    for r in record_step_range:
+        try:
+            parsed_range = parse_range(r)
+            ranges.append(parsed_range)
+        except argparse.ArgumentTypeError as e:
+            raise argparse.ArgumentTypeError(str(e))
+        
 record_times = generate_record_times(ranges)
 print(f"record_frequency: {record_frequency}")
 print(f"record_step_range: {record_step_range}")
@@ -131,64 +205,38 @@ print(f"record_times: {record_times}")
 saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 savedir = f"{saveroot}/{exp_name}"
 sample_dir = f"{savedir}/samples"
+ckpt_dir = f"{savedir}/ckpts"
 os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
-device = get_device()
+os.makedirs(ckpt_dir, exist_ok=True)
 # dump the args to json
 json.dump(args.__dict__, open(f"{savedir}/args.json", "w"))
-
-if dataset_name == "words32x32_50k":
-    image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k.pt")
-    text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_words.pkl", "rb"))
-    data_Xtsr = image_tensor
-elif dataset_name == "MNIST":
-    mnist_dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
-                                           train=True, download=True, transform=transforms.ToTensor())
-    mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
-    data_Xtsr = mnist_Xtsr
-elif dataset_name == "ffhq-32x32":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
-    imgshape = data_Xtsr.shape[1:]
-elif dataset_name == "ffhq-32x32-fix_words":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
-    imgshape = data_Xtsr.shape[1:]
-elif dataset_name == "ffhq-32x32-random_word_jitter":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
-    imgshape = data_Xtsr.shape[1:]
-elif dataset_name == "afhq-32x32":
-    data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
-    imgshape = data_Xtsr.shape[1:]
-elif dataset_name == "CIFAR":
-    import sys
-    sys.path.append("/n/home12/binxuwang/Github/edm")
-    from training.dataset import ImageFolderDataset
-    edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
-    edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
-    dataset = ImageFolderDataset(edm_cifar_path)
-    data_Xtsr = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-    imgshape = data_Xtsr.shape[1:]
-else:
-    raise ValueError(f"Dataset {dataset_name} not found")
 
 loss_store = {}
 def sampling_callback_fn(epoch, loss, model):
     loss_store[epoch] = loss
     x_out_batches = []
+    if eval_fix_noise_seed:
+        noise_init_all = torch.randn(eval_sample_size, *imgshape, generator=torch.Generator().manual_seed(0))
+    else:
+        noise_init_all = torch.randn(eval_sample_size, *imgshape)
     for i in range(0, eval_sample_size, eval_batch_size):
         batch_size_i = min(eval_batch_size, eval_sample_size - i)
-        noise_init = torch.randn(batch_size_i, np.prod(imgshape)).to(device)
-        x_out_i, x_traj_i, x0hat_traj_i, t_steps_i = edm_sampler(model, noise_init,
-                        num_steps=eval_sampling_steps, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
+        noise_init = noise_init_all[i:i+batch_size_i].to(device)
+        x_out_i = edm_sampler(model, noise_init, num_steps=eval_sampling_steps, 
+                        sigma_min=0.002, sigma_max=80, rho=7, return_traj=False)
+        # x_out_i, x_traj_i, x0hat_traj_i, t_steps_i = edm_sampler(model, noise_init,
+        #                 num_steps=eval_sampling_steps, sigma_min=0.002, sigma_max=80, rho=7, return_traj=True)
         x_out_batches.append(x_out_i)
     
     x_out = torch.cat(x_out_batches, dim=0)
     # sample_store[epoch] = x_out.cpu(), # x_traj.cpu(), x0hat_traj.cpu(), t_steps.cpu()
     torch.save(x_out, f"{sample_dir}/samples_epoch_{epoch:06d}.pt")
-    # make the shape correct
-    x_out_reshaped = x_out.view(x_out.shape[0], *imgshape)
-    mtg = to_imgrid(((x_out_reshaped.cpu()[:64] + 1) / 2).clamp(0, 1), nrow=8, padding=1)
+    mtg = to_imgrid(((x_out.cpu()[:64] + 1) / 2).clamp(0, 1), nrow=8, padding=1)
     mtg.save(f"{sample_dir}/samples_epoch_{epoch:06d}.png")
 
+
+data_Xtsr, imgshape = load_raw_dataset(dataset_name)
 device = get_device()
 pnts = data_Xtsr.view(data_Xtsr.shape[0], -1).to(device)
 pnts = (pnts - 0.5) / 0.5
@@ -201,9 +249,10 @@ edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
 model_precd, loss_traj = train_score_model_custom_loss(pnts, model_precd, edm_loss_fn, 
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
                                     callback=sampling_callback_fn, callback_freq=record_frequency, 
-                                    callback_step_list=record_times)
+                                    callback_step_list=record_times, save_ckpts=save_ckpts, ckpt_dir=ckpt_dir, save_ckpt_step_list=ckpt_step_list)
 
 pkl.dump(loss_store, open(f"{savedir}/loss_store.pkl", "wb"))
+pkl.dump(loss_traj, open(f"{savedir}/loss_traj.pkl", "wb"))
 torch.save(model_precd.model.state_dict(), f"{savedir}/model_final.pth")
 # pkl.dump(sample_store, open(f"{savedir}/sample_store.pkl", "wb"))
 # train_X_mean, train_X_cov, train_X_eigval, train_X_eigvec, mean_x_sample_traj, cov_x_sample_traj, diag_cov_x_sample_true_eigenbasis_traj = \
