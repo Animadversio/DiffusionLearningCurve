@@ -217,9 +217,9 @@ def sampling_callback_fn(epoch, loss, model):
     loss_store[epoch] = loss
     x_out_batches = []
     if eval_fix_noise_seed:
-        noise_init_all = torch.randn(eval_sample_size, *imgshape, generator=torch.Generator().manual_seed(0))
+        noise_init_all = torch.randn(eval_sample_size,  np.prod(imgshape), generator=torch.Generator().manual_seed(0))
     else:
-        noise_init_all = torch.randn(eval_sample_size, *imgshape)
+        noise_init_all = torch.randn(eval_sample_size,  np.prod(imgshape))
     for i in range(0, eval_sample_size, eval_batch_size):
         batch_size_i = min(eval_batch_size, eval_sample_size - i)
         noise_init = noise_init_all[i:i+batch_size_i].to(device)
@@ -232,7 +232,9 @@ def sampling_callback_fn(epoch, loss, model):
     x_out = torch.cat(x_out_batches, dim=0)
     # sample_store[epoch] = x_out.cpu(), # x_traj.cpu(), x0hat_traj.cpu(), t_steps.cpu()
     torch.save(x_out, f"{sample_dir}/samples_epoch_{epoch:06d}.pt")
-    mtg = to_imgrid(((x_out.cpu()[:64] + 1) / 2).clamp(0, 1), nrow=8, padding=1)
+    # make the shape correct
+    x_out_reshaped = x_out.view(x_out.shape[0], *imgshape)
+    mtg = to_imgrid(((x_out_reshaped.cpu()[:64] + 1) / 2).clamp(0, 1), nrow=8, padding=1)
     mtg.save(f"{sample_dir}/samples_epoch_{epoch:06d}.png")
 
 
