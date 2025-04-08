@@ -36,11 +36,18 @@ def load_raw_dataset(dataset_name):
         image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k.pt")
         text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_words.pkl", "rb"))
         data_Xtsr = image_tensor
+        imgshape = data_Xtsr.shape[1:]
+    elif dataset_name == "words32x32_50k_BW":
+        image_tensor = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_BW.pt")
+        text_list = pkl.load(open("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/words32x32_50k_BW_words.pkl", "rb"))
+        data_Xtsr = image_tensor
+        imgshape = data_Xtsr.shape[1:]
     elif dataset_name == "MNIST":
         mnist_dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
                                             train=True, download=True, transform=transforms.ToTensor())
         mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
         data_Xtsr = mnist_Xtsr
+        imgshape = data_Xtsr.shape[1:]
     elif dataset_name == "ffhq-32x32":
         data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
         imgshape = data_Xtsr.shape[1:]

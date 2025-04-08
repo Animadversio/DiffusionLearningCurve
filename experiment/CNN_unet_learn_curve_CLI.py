@@ -113,6 +113,13 @@ def load_dataset(dataset_name):
         imgsize = 32
         imgchannels = 1
         Xtsr_raw = image_tensor
+    elif dataset_name == "words32x32_50k_BW":
+        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+        image_tensor = torch.load(join(wordimg_root, "words32x32_50k_BW.pt"))
+        text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_BW_words.pkl"), "rb"))
+        imgsize = 32
+        imgchannels = 1
+        Xtsr_raw = image_tensor
     elif dataset_name == "FFHQ_fix_words":
         wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
         save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
