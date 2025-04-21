@@ -308,6 +308,7 @@ for ckpt_step in ckpt_step_list:
 
 # %% [markdown]
 # ### Loading DiT
+#%%
 # loading config 
 expname = "FFHQ32_DiT_P2_192D_3H_6L_EDM_saveckpt_fewsample"
 savedir = join(saveroot, expname)
