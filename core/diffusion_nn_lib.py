@@ -226,3 +226,42 @@ class UNetBlockStyleMLP_backbone(nn.Module):
         x = layer(x, t_embed)
     pred = self.net[-1](x)
     return pred
+
+
+class UNetBlockStyleMLP_backbone_NoFirstNorm(nn.Module):
+  """A time-dependent score-based model with improved handling for low-dim inputs.
+  
+  Adds a pre-projection layer to avoid LayerNorm issues with very low dimensional data.
+  """
+
+  def __init__(self, ndim=2, nlayers=5, nhidden=64, time_embed_dim=64,):
+    super().__init__()
+    self.embed = GaussianFourierProjection(time_embed_dim, scale=1)
+    layers = nn.ModuleList()
+    
+    # Add pre-projection to avoid LayerNorm on low-dim input
+    if ndim < nhidden:
+        layers.append(nn.Linear(ndim, nhidden))
+        first_block_input_dim = nhidden
+    else:
+        first_block_input_dim = ndim
+    
+    layers.append(UNetMLPBlock(first_block_input_dim, nhidden, time_embed_dim))
+    for _ in range(nlayers-2):
+        layers.append(UNetMLPBlock(nhidden, nhidden, time_embed_dim))
+    layers.append(nn.Linear(nhidden, ndim))
+    self.net = layers
+
+  def forward(self, x, t_enc, cond=None):
+    # t_enc : preconditioned version of sigma, usually 
+    # ln_std_vec = torch.log(std_vec) / 4
+    t_embed = self.embed(t_enc)
+    for layer in self.net[:-1]:
+        if isinstance(layer, nn.Linear):
+            # Apply pre-projection without time embedding
+            x = layer(x)
+        else:
+            # Apply UNetMLPBlock with time embedding
+            x = layer(x, t_embed)
+    pred = self.net[-1](x)
+    return pred
