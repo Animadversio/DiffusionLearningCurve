@@ -169,7 +169,7 @@ def process_patch_mean_cov_statistics(train_images, sample_store, savedir, patch
 # process_patch_statistics(Xtsr, sample_store, savedir, device)
 
 def plot_variance_trajectories(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj, patch_eigval, slice2plot,
-                               patch_size, patch_stride, savedir, dataset_name="FFHQ64"):
+                               patch_size, patch_stride, savedir, dataset_name="FFHQ64", figsize=(6, 4)):
     ndim = patch_eigval.shape[0]
     if isinstance(slice2plot, slice):
         eigidx2plot = range(ndim)[slice2plot]
@@ -178,7 +178,7 @@ def plot_variance_trajectories(step_slice, diag_cov_x_patch_sample_true_eigenbas
     else:
         raise ValueError(f"Invalid slice2plot type: {type(slice2plot)}")
     max_eigid = max(eigidx2plot)
-    plt.figure()
+    plt.figure(figsize=figsize)
     plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj[:, eigidx2plot], alpha=0.7)
     for i, eigid in enumerate(eigidx2plot):
         plt.axhline(patch_eigval[eigid].item(), color=f"C{i}", linestyle="--", alpha=0.7)
@@ -191,7 +191,7 @@ def plot_variance_trajectories(step_slice, diag_cov_x_patch_sample_true_eigenbas
     saveallforms(savedir, f"sample_patch_{patch_size}x{patch_size}_stride_{patch_stride}_cov_true_eigenbasis_diag_traj_raw_top{max_eigid}")
     plt.show()
 
-    plt.figure()
+    plt.figure(figsize=figsize)
     diag_cov_x_patch_sample_true_eigenbasis_traj_normalized = diag_cov_x_patch_sample_true_eigenbasis_traj / patch_eigval
     plt.plot(step_slice, diag_cov_x_patch_sample_true_eigenbasis_traj_normalized[:, eigidx2plot], alpha=0.7)
     plt.axhline(1, color="k", linestyle="--", alpha=0.7)

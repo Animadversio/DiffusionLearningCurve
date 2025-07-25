@@ -131,6 +131,46 @@ import seaborn as sns
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+
+from sklearn.linear_model import LinearRegression
+import pandas as pd
+def fit_regression_log_scale(x, y, verbose=True):
+    """Fit a linear regression model on log-transformed data."""
+    # Log-transform the data
+    if isinstance(x, pd.Series):
+        x = x.to_numpy()
+    if isinstance(y, pd.Series):
+        y = y.to_numpy()
+    # mask out negative values
+    mask = (x > 0) & (y > 0)
+    x = x[mask]
+    y = y[mask]
+    log_x = np.log(x)
+    log_y = np.log(y)
+    # simple linear regression
+    # Use OLS from sklearn for linear regression
+    model = LinearRegression().fit(log_x.reshape(-1, 1), log_y)
+    slope = model.coef_[0]
+    intercept = model.intercept_
+    # Calculate r-squared
+    r_squared = model.score(log_x.reshape(-1, 1), log_y)
+    # Express the equation in the form of y = a * x^b
+    a = np.exp(intercept)
+    b = slope
+    if verbose:
+        print(f"Slope: {slope:.2f}, Intercept: {intercept:.2f}, R-squared: {r_squared:.2f} (log-log) [N={len(x)}]")
+        print(f"Equation: $y = {a:.2f} x^{{{b:.2f}}}$")
+    fit_dict = {
+        "a": a,
+        "b": b,
+        "intercept": intercept,
+        "slope": slope,
+        "r_squared": r_squared,
+        "N": len(x)
+    }
+    return fit_dict
+
+
 def analyze_and_plot_variance(df, 
                               x_col='emergence_step', 
                               y_col='Variance', 
@@ -147,6 +187,7 @@ def analyze_and_plot_variance(df,
                               xlabel='Emergence Step',
                               ylabel='Variance',
                               alpha=0.7,
+                              exclude_mask=None,
                               fit_line_kwargs=None,
                               scatter_kwargs=None,
                               ax=None):
@@ -181,6 +222,8 @@ def analyze_and_plot_variance(df,
         fit_line_kwargs = {}
     if scatter_kwargs is None:
         scatter_kwargs = {}
+    if exclude_mask is None:
+        exclude_mask = np.zeros(len(df), dtype=bool)
     
     # Initialize the plot
     if ax is None:
@@ -210,7 +253,7 @@ def analyze_and_plot_variance(df,
     colors = palette  # Assumes palette keys match directions
     
     for direction in directions:
-        subset = df[df[hue_col] == direction].copy()
+        subset = df[(df[hue_col] == direction) & ~exclude_mask].copy()
         
         # Ensure there are enough data points to perform regression
         if subset.shape[0] < 2:
