@@ -15,6 +15,7 @@ from core.diffusion_nn_lib import UNetBlockStyleMLP_backbone
 from core.toy_shape_dataset_lib import generate_random_star_shape_torch
 from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import *
+from core.diffusion_esm_edm_lib import EDMDeltaGMMScoreLoss
 import os
 import pickle as pkl
 from circuit_toolkit.plot_utils import saveallforms
@@ -146,6 +147,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="UNet Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="words32x32_50k", help="Dataset name")
     parser.add_argument("--exp_name", type=str, default="words32x32_50k_UNet_MLP_EDM_8L_1536D_lr1e-4", help="Experiment name")
+    parser.add_argument("--loss_type", type=str, default="DSM", help="Loss type (DSM, ESM)")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
     parser.add_argument("--nsteps", type=int, default=100000, help="Number of steps")
     parser.add_argument("--mlp_layers", type=int, default=8, help="Number of layers")
@@ -263,7 +265,12 @@ pprint(config)
 json.dump(config, open(f"{savedir}/config.json", "w"))
 model = UNetBlockStyleMLP_backbone(ndim=ndim, nlayers=mlp_layers, nhidden=mlp_hidden_dim, time_embed_dim=mlp_time_embed_dim,)
 model_precd = EDMPrecondWrapper(model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
-edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+if args.loss_type == "DSM":
+    edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+elif args.loss_type == "ESM":
+    edm_loss_fn = EDMDeltaGMMScoreLoss(train_Xmat=pnts.to(device), P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+else:
+    raise ValueError(f"Invalid loss type: {args.loss_type}")
 model_precd, loss_traj = train_score_model_custom_loss(pnts, model_precd, edm_loss_fn, 
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
                                     callback=sampling_callback_fn, callback_freq=record_frequency, 

@@ -20,6 +20,7 @@ from core.diffusion_nn_lib import UNetBlockStyleMLP_backbone
 from core.toy_shape_dataset_lib import generate_random_star_shape_torch
 from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import *
+from core.diffusion_esm_edm_lib import EDMDeltaGMMScoreLoss
 from core.network_edm_lib import SongUNet, DhariwalUNet
 from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
 
@@ -236,6 +237,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="UNet Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="FFHQ", help="Dataset name")
     parser.add_argument("--exp_name", type=str, default="MNIST_UNet_CNN_EDM", help="Experiment name")
+    parser.add_argument("--loss_type", type=str, default="DSM", help="Loss type (DSM, ESM)")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
     parser.add_argument("--nsteps", type=int, default=5000, help="Number of steps")
     parser.add_argument("--layers_per_block", type=int, default=1, help="Layers per block")
@@ -380,7 +382,12 @@ json.dump(args.__dict__, open(f"{savedir}/args.json", "w"))
 
 unet = create_unet_model(config)
 model_precd = EDMCNNPrecondWrapper(unet, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
-edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+if args.loss_type == "DSM":
+    edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+elif args.loss_type == "ESM":
+    edm_loss_fn = EDMDeltaGMMScoreLoss(train_Xmat=Xtsr.to(device), P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+else:
+    raise ValueError(f"Invalid loss type: {args.loss_type}")
 model_precd, loss_traj = train_score_model_custom_loss(Xtsr, model_precd, edm_loss_fn, 
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
                                     callback=sampling_callback_fn, callback_freq=record_frequency, callback_step_list=record_times,

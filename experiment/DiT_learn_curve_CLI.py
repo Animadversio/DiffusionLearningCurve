@@ -21,6 +21,7 @@ from core.toy_shape_dataset_lib import generate_random_star_shape_torch
 from core.toy_shape_dataset_lib import generate_random_star_shape_torch
 from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import * 
+from core.diffusion_esm_edm_lib import EDMDeltaGMMScoreLoss
 from core.DiT_model_lib import *
 # from core.dataset_lib import load_dataset
 from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
@@ -190,6 +191,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="DiT Learning Curve Experiment")
     parser.add_argument("--dataset_name", type=str, default="ffhq-32x32", help="Dataset name")
     parser.add_argument("--exp_name", type=str, default="FFHQ32_DiT_CNN_EDM", help="Experiment name")
+    parser.add_argument("--loss_type", type=str, default="DSM", help="Loss type (DSM, ESM)")
     # training hyper-parameters
     parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate")
     parser.add_argument("--batch_size", type=int, default=256, help="Batch size")
@@ -340,7 +342,12 @@ json.dump(args.__dict__, open(f"{savedir}/args.json", "w"))
 
 DiT_model = DiT(**config)
 model_precd = EDMDiTPrecondWrapper(DiT_model, sigma_data=0.5, sigma_min=0.002, sigma_max=80, rho=7.0)
-edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+if args.loss_type == "DSM":
+    edm_loss_fn = EDMLoss(P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+elif args.loss_type == "ESM":
+    edm_loss_fn = EDMDeltaGMMScoreLoss(train_Xmat=Xtsr.to(device), P_mean=-1.2, P_std=1.2, sigma_data=0.5)
+else:
+    raise ValueError(f"Invalid loss type: {args.loss_type}")
 model_precd, loss_traj = train_score_model_custom_loss(Xtsr, model_precd, edm_loss_fn, 
                                     lr=lr, nepochs=nsteps, batch_size=batch_size, device=device, 
                                     callback=sampling_callback_fn, callback_freq=record_frequency, callback_step_list=record_times,
