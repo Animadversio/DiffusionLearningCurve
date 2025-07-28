@@ -15,8 +15,22 @@ def delta_GMM_score(Xt, train_Xmat, sigma, return_weights=False):
 def delta_GMM_denoiser(Xt, train_Xmat, sigma):
     # get squared distance matrix
     sqdist = torch.cdist(Xt.flatten(1), train_Xmat.flatten(1), p=2) ** 2
+    # fixed.
+    if isinstance(sigma, torch.Tensor):
+        # Ensure sigma has the right shape for broadcasting
+        if sigma.dim() == 0:
+            # sigma is already a scalar, no change needed
+            pass
+        elif sigma.dim() == 1:
+            sigma = sigma.unsqueeze(1)  # Shape becomes (nXt, 1)
+        else:
+            # For higher dimensional tensors, flatten to 1D then unsqueeze
+            sigma = sigma.squeeze().unsqueeze(1)
+    # the sigma is either a scalar or a tensor of shape (nXt, 1)
     weights = F.softmax(-sqdist / (2 * sigma**2), dim=1)
-    denoised = torch.matmul(weights, train_Xmat)
+    # denoised = torch.matmul(weights, train_Xmat) # this is the original implementation
+    # this is the more general implementation for tensors. 
+    denoised = torch.matmul(weights, train_Xmat.flatten(1)).reshape(Xt.shape)
     return denoised
 
 
