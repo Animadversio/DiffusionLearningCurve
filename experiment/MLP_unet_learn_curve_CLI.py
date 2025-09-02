@@ -20,6 +20,7 @@ import os
 import pickle as pkl
 from circuit_toolkit.plot_utils import saveallforms
 from core.img_patch_stats_analysis_lib import *
+from core.dataset_lib import select_dataset_subset
 saveroot = f"/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve"
 
 def get_device():
@@ -172,6 +173,9 @@ def parse_args():
     )   
     parser.add_argument("--save_ckpts", action="store_true", help="Save checkpoint trajectory")
     parser.add_argument("--num_ckpts", type=int, default=100, help="Number of checkpoints")
+    parser.add_argument("--dset_start", type=int, default=None, help="Start index for dataset subset selection")
+    parser.add_argument("--dset_end", type=int, default=None, help="End index for dataset subset selection")
+    parser.add_argument("--dset_step", type=int, default=None, help="Step size for dataset subset selection")
     return parser.parse_args()
 
 args = parse_args()
@@ -248,6 +252,10 @@ def sampling_callback_fn(epoch, loss, model):
 
 
 data_Xtsr, imgshape = load_raw_dataset(dataset_name)
+data_Xtsr = select_dataset_subset(data_Xtsr, 
+                                 start_idx=args.dset_start,
+                                 end_idx=args.dset_end, 
+                                 step_idx=args.dset_step)
 device = get_device()
 pnts = data_Xtsr.view(data_Xtsr.shape[0], -1).to(device)
 pnts = (pnts - 0.5) / 0.5

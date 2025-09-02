@@ -22,6 +22,7 @@ from core.diffusion_basics_lib import *
 from core.diffusion_edm_lib import *
 from core.diffusion_esm_edm_lib import EDMDeltaGMMScoreLoss
 from core.network_edm_lib import SongUNet, DhariwalUNet, SongUNetResNet
+from core.dataset_lib import select_dataset_subset
 from circuit_toolkit.plot_utils import saveallforms, to_imgrid, show_imgrid
 
 
@@ -262,6 +263,9 @@ def parse_args():
     )
     parser.add_argument("--save_ckpts", action="store_true", help="Save checkpoint trajectory")
     parser.add_argument("--num_ckpts", type=int, default=100, help="Number of checkpoints")
+    parser.add_argument("--dset_start", type=int, default=None, help="Start index for dataset subset selection")
+    parser.add_argument("--dset_end", type=int, default=None, help="End index for dataset subset selection")
+    parser.add_argument("--dset_step", type=int, default=None, help="Step size for dataset subset selection")
     return parser.parse_args()
 
 # %%
@@ -326,6 +330,10 @@ os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
 os.makedirs(ckpt_dir, exist_ok=True)
 Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
+Xtsr_raw = select_dataset_subset(Xtsr_raw, 
+                                 start_idx=args.dset_start,
+                                 end_idx=args.dset_end, 
+                                 step_idx=args.dset_step)
 
 # %%
 # sample_store = {}

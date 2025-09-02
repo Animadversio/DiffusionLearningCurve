@@ -62,6 +62,39 @@ def load_dataset(dataset_name, normalize=True):
     return Xtsr, imgsize
 
 
+def select_dataset_subset(Xtsr_raw, start_idx=None, end_idx=None, step_idx=None):
+    """
+    Select a subset of the dataset based on index range.
+    
+    Args:
+        Xtsr_raw: Full dataset tensor
+        start_idx: Start index (inclusive, default: 0)
+        end_idx: End index (exclusive, default: len(dataset))
+        step_idx: Step size (default: 1)
+    
+    Returns:
+        Selected subset of the dataset tensor
+    """
+    if start_idx is None and end_idx is None and step_idx is None:
+        return Xtsr_raw
+    
+    start_idx = start_idx if start_idx is not None else 0
+    end_idx = end_idx if end_idx is not None else len(Xtsr_raw)
+    step_idx = step_idx if step_idx is not None else 1
+    
+    # Validate indices
+    start_idx = max(0, min(start_idx, len(Xtsr_raw)))
+    end_idx = max(start_idx, min(end_idx, len(Xtsr_raw)))
+    
+    # Create index range
+    indices = list(range(start_idx, end_idx, step_idx))
+    Xtsr_subset = Xtsr_raw[indices]
+    print(f"Dataset subset: indices {start_idx}:{end_idx}:{step_idx}, selected {len(Xtsr_subset)} samples")
+    
+    return Xtsr_subset
+
+
+
 
 import time
 def test_dataset_loading():
