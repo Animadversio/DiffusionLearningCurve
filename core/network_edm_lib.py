@@ -30,6 +30,29 @@ def create_unet_model(config):
     print(f'total number of parameters in the Score Model: {pytorch_total_params}')
     return unet
 
+
+def create_unet_resnet_model(config):
+    unet = SongUNetResNet(in_channels=config.channels, 
+                out_channels=config.channels, 
+                num_blocks=config.layers_per_block, 
+                attn_resolutions=config.attn_resolutions, 
+                model_channels=config.model_channels, 
+                dropout=config.dropout, 
+                img_resolution=config.img_size, 
+                label_dim=config.label_dim,
+                embedding_type='positional', 
+                encoder_type='standard', 
+                decoder_type='standard', 
+                augment_dim=config.augment_dim, #  no augmentation , 9 for defaults. 
+                channel_mult_noise=1, 
+                resample_filter=[1,1], 
+                )
+    pytorch_total_grad_params = sum(p.numel() for p in unet.parameters() if p.requires_grad)
+    print(f'total number of trainable parameters in the Score Model: {pytorch_total_grad_params}')
+    pytorch_total_params = sum(p.numel() for p in unet.parameters())
+    print(f'total number of parameters in the Score Model: {pytorch_total_params}')
+    return unet
+
 #----------------------------------------------------------------------------
 # Unified routine for initializing weights and biases.
 
