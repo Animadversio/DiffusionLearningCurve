@@ -4,7 +4,7 @@
 #SBATCH -c 16               # Number of cores (-c)
 #SBATCH --mem=70G           # Memory pool for all cores (see also --mem-per-cpu)
 #SBATCH --gres=gpu:1
-#SBATCH --array 1-10
+#SBATCH --array 11-30
 #SBATCH --account=kempner_binxuwang_lab
 #SBATCH -o MLP_dataset_scaling_%A_%a.out  # File to which STDOUT will be written, %j inserts jobid
 #SBATCH -e MLP_dataset_scaling_%A_%a.err  # File to which STDERR will be written, %j inserts jobid
