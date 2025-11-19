@@ -83,85 +83,85 @@ def create_unet_model(config):
     return unet
 
 
-def load_dataset(dataset_name):
-    import sys
-    sys.path.append("/n/home12/binxuwang/Github/edm")
-    from training.dataset import TensorDataset, ImageFolderDataset
-    ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256"
-    edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
-    if dataset_name == "FFHQ":
-        edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
-        dataset = ImageFolderDataset(edm_ffhq64_path)
-        imgsize = 64
-        imgchannels = 3
-        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-    elif dataset_name == "AFHQ":
-        edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
-        dataset = ImageFolderDataset(edm_afhq_path)
-        imgsize = 64
-        imgchannels = 3
-        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-    elif dataset_name == "CIFAR":
-        edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
-        dataset = ImageFolderDataset(edm_cifar_path)
-        imgsize = 32
-        imgchannels = 3
-        Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
-    elif dataset_name == "words32x32_50k":
-        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-        image_tensor = torch.load(join(wordimg_root, "words32x32_50k.pt"))
-        text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_words.pkl"), "rb"))
-        imgsize = 32
-        imgchannels = 1
-        Xtsr_raw = image_tensor
-    elif dataset_name == "words32x32_50k_BW":
-        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-        image_tensor = torch.load(join(wordimg_root, "words32x32_50k_BW.pt"))
-        text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_BW_words.pkl"), "rb"))
-        imgsize = 32
-        imgchannels = 1
-        Xtsr_raw = image_tensor
-    elif dataset_name == "FFHQ_fix_words":
-        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-        save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
-        image_tensor = torch.load(save_path)
-        imgsize = 64
-        imgchannels = 3
-        Xtsr_raw = image_tensor
-    elif dataset_name == "FFHQ_random_words_jitter":
-        wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
-        save_path = join(wordimg_root, "ffhq-64x64-random_word_jitter2-8.pt")
-        image_tensor = torch.load(save_path)
-        imgsize = 64
-        imgchannels = 3
-        Xtsr_raw = image_tensor
-    elif dataset_name == "ffhq-32x32":
-        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
-        imgsize = 32
-        imgchannels = 3
-        Xtsr_raw = data_Xtsr
-    elif dataset_name == "ffhq-32x32-fix_words":
-        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
-        imgsize = 32
-        imgchannels = 3
-        Xtsr_raw = data_Xtsr
-    elif dataset_name == "ffhq-32x32-random_word_jitter":
-        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
-        imgsize = 32
-        imgchannels = 3
-        Xtsr_raw = data_Xtsr
-    elif dataset_name == "afhq-32x32":
-        data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
-        imgsize = 32
-        imgchannels = 3
-        Xtsr_raw = data_Xtsr
+# def load_dataset(dataset_name):
+#     import sys
+#     sys.path.append("/n/home12/binxuwang/Github/edm")
+#     from training.dataset import TensorDataset, ImageFolderDataset
+#     ffhq256dir = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/ffhq256"
+#     edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
+#     if dataset_name == "FFHQ":
+#         edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
+#         dataset = ImageFolderDataset(edm_ffhq64_path)
+#         imgsize = 64
+#         imgchannels = 3
+#         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+#     elif dataset_name == "AFHQ":
+#         edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
+#         dataset = ImageFolderDataset(edm_afhq_path)
+#         imgsize = 64
+#         imgchannels = 3
+#         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+#     elif dataset_name == "CIFAR":
+#         edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
+#         dataset = ImageFolderDataset(edm_cifar_path)
+#         imgsize = 32
+#         imgchannels = 3
+#         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
+#     elif dataset_name == "words32x32_50k":
+#         wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+#         image_tensor = torch.load(join(wordimg_root, "words32x32_50k.pt"))
+#         text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_words.pkl"), "rb"))
+#         imgsize = 32
+#         imgchannels = 1
+#         Xtsr_raw = image_tensor
+#     elif dataset_name == "words32x32_50k_BW":
+#         wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+#         image_tensor = torch.load(join(wordimg_root, "words32x32_50k_BW.pt"))
+#         text_list = pkl.load(open(join(wordimg_root, "words32x32_50k_BW_words.pkl"), "rb"))
+#         imgsize = 32
+#         imgchannels = 1
+#         Xtsr_raw = image_tensor
+#     elif dataset_name == "FFHQ_fix_words":
+#         wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+#         save_path = join(wordimg_root, "ffhq-64x64-fixed_text.pt")
+#         image_tensor = torch.load(save_path)
+#         imgsize = 64
+#         imgchannels = 3
+#         Xtsr_raw = image_tensor
+#     elif dataset_name == "FFHQ_random_words_jitter":
+#         wordimg_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+#         save_path = join(wordimg_root, "ffhq-64x64-random_word_jitter2-8.pt")
+#         image_tensor = torch.load(save_path)
+#         imgsize = 64
+#         imgchannels = 3
+#         Xtsr_raw = image_tensor
+#     elif dataset_name == "ffhq-32x32":
+#         data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32.pt")
+#         imgsize = 32
+#         imgchannels = 3
+#         Xtsr_raw = data_Xtsr
+#     elif dataset_name == "ffhq-32x32-fix_words":
+#         data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-fixed_text.pt")
+#         imgsize = 32
+#         imgchannels = 3
+#         Xtsr_raw = data_Xtsr
+#     elif dataset_name == "ffhq-32x32-random_word_jitter":
+#         data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/ffhq-32x32-random_word_jitter1-4.pt")
+#         imgsize = 32
+#         imgchannels = 3
+#         Xtsr_raw = data_Xtsr
+#     elif dataset_name == "afhq-32x32":
+#         data_Xtsr = torch.load("/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset/afhq-32x32.pt")
+#         imgsize = 32
+#         imgchannels = 3
+#         Xtsr_raw = data_Xtsr
 
-    assert Xtsr_raw.shape[1] == imgchannels
-    assert Xtsr_raw.shape[2] == imgsize
-    assert Xtsr_raw.shape[3] == imgsize
-    print(f"{dataset_name} dataset: {len(Xtsr_raw)}")
-    print(f"value range" , (Xtsr_raw.max()), (Xtsr_raw.min()))
-    return Xtsr_raw, imgsize, imgchannels
+#     assert Xtsr_raw.shape[1] == imgchannels
+#     assert Xtsr_raw.shape[2] == imgsize
+#     assert Xtsr_raw.shape[3] == imgsize
+#     print(f"{dataset_name} dataset: {len(Xtsr_raw)}")
+#     print(f"value range" , (Xtsr_raw.max()), (Xtsr_raw.min()))
+#     return Xtsr_raw, imgsize, imgchannels
 
 # %%
 from pprint import pprint
@@ -307,7 +307,7 @@ num_ckpts = args.num_ckpts
 ckpt_step_list = generate_ckpt_step_list(nsteps, num_ckpts=num_ckpts, sequence="geomspace")
 if args.record_step_range is None or len(args.record_step_range) == 0:
     print("using default record step range")
-    ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256)]
+    ranges = [(0, 10, 1), (10, 50, 2), (50, 100, 4), (100, 500, 8), (500, 2500, 16), (2500, 5000, 32), (5000, 10000, 128), (10000, 50000, 256), (50000, 100000, 512),]
     record_step_range = ranges
 else:
     record_step_range = args.record_step_range
@@ -337,7 +337,9 @@ ckpt_dir = f"{savedir}/ckpts"
 os.makedirs(savedir, exist_ok=True)
 os.makedirs(sample_dir, exist_ok=True)
 os.makedirs(ckpt_dir, exist_ok=True)
-Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
+# Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
+from core.dataset_lib import load_dataset
+Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name, normalize=False, return_channels=True)
 Xtsr_raw = select_dataset_subset(Xtsr_raw, 
                                  start_idx=args.dset_start,
                                  end_idx=args.dset_end, 
@@ -372,11 +374,11 @@ def sampling_callback_fn(epoch, loss, model):
 
 device = get_device()
 Xtsr = (Xtsr_raw.to(device) - 0.5) / 0.5
-pnts = Xtsr.view(Xtsr.shape[0], -1)
+# pnts = Xtsr.reshape(Xtsr.shape[0], -1)
 imgshape = Xtsr.shape[1:]
-ndim = pnts.shape[1]
+ndim = np.prod(Xtsr.shape[1:])
 # cov_empirical = torch.cov(pnts.T, correction=1)
-print(f"{args.dataset_name} dataset {pnts.shape[0]} samples, {ndim} features")
+print(f"{args.dataset_name} dataset {Xtsr.shape[0]} samples, {ndim} features")
 config = edict(
     channels=imgchannels,
     img_size=imgsize,
