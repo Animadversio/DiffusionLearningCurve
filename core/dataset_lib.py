@@ -82,8 +82,7 @@ def load_dataset(dataset_name, normalize=True, return_channels=False):
         Xtsr_raw = torch.stack(
             [cifar100_train[k][0] for k in range(len(cifar100_train))]
         )
-        if return_labels:
-            labels = [cifar100_train[k][1] for k in range(len(cifar100_train))]
+        labels = [cifar100_train[k][1] for k in range(len(cifar100_train))]
 
     # ---------- Word-image datasets ----------
     elif dataset_name == "words32x32_50k":
