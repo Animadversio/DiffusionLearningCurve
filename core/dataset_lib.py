@@ -155,7 +155,14 @@ def load_dataset(dataset_name, normalize=True, return_channels=False):
         Xtsr_raw = torch.load(join(dataset_root, "LSUN_church", "church_train_32x32.pt"))
         imgsize = 32
         imgchannels = 3
-
+    elif dataset_name == "LSUN_bedroom-64x64":
+        Xtsr_raw = torch.load(join(dataset_root, "LSUN_bedroom_20pc", "bedroom_train_64x64.pt"))
+        imgsize = 64
+        imgchannels = 3
+    elif dataset_name == "LSUN_bedroom-32x32":
+        Xtsr_raw = torch.load(join(dataset_root, "LSUN_bedroom_20pc", "bedroom_train_32x32.pt"))
+        imgsize = 32
+        imgchannels = 3
     else:
         raise ValueError(f"Unknown dataset_name: {dataset_name}")
 
