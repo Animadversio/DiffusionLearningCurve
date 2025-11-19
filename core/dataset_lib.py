@@ -8,58 +8,101 @@
 """Combine edm dataset and wordnet dataset loading functions into one."""
 import sys
 from os.path import join
+import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
-def load_dataset(dataset_name, normalize=True):
+def load_dataset(dataset_name, normalize=True, return_channels=False):
     sys.path.append("/n/home12/binxuwang/Github/edm")
     from training.dataset import TensorDataset, ImageFolderDataset
     edm_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/EDM_datasets/datasets"
     word_dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/DL_Projects/DiffusionSpectralLearningCurve/wordnet_render_dataset"
+    dataset_root = "/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Datasets/"
+    
     if dataset_name == "FFHQ":
         edm_ffhq64_path = join(edm_dataset_root, "ffhq-64x64.zip")
         dataset = ImageFolderDataset(edm_ffhq64_path)
         imgsize = 64
+        imgchannels = 3
         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "AFHQ":
         edm_afhq_path = join(edm_dataset_root, "afhqv2-64x64.zip")
         dataset = ImageFolderDataset(edm_afhq_path)
         imgsize = 64
+        imgchannels = 3
         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "CIFAR":
         edm_cifar_path = join(edm_dataset_root, "cifar10-32x32.zip")
         dataset = ImageFolderDataset(edm_cifar_path)
         imgsize = 32
+        imgchannels = 3
         Xtsr_raw = torch.stack([torch.from_numpy(dataset[i][0]) for i in range(len(dataset))]) / 255.0
     elif dataset_name == "MNIST":
         dataset = torchvision.datasets.MNIST(root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data', 
                             train=True, download=True, 
                             transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((32, 32))]))
         imgsize = 32
+        imgchannels = 1
         Xtsr_raw = torch.stack([dataset[i][0] for i in range(len(dataset))])
         # mnist_Xtsr = torch.stack([mnist_dataset[i][0] for i in range(len(mnist_dataset))])
         # print(mnist_Xtsr.shape) # 60000 x 32 x 32
         # Xtsr = (mnist_Xtsr.to(device) - 0.5) / 0.5
+    elif dataset_name == "CIFAR100":
+        cifar100_train = torchvision.datasets.CIFAR100(
+            root='/n/holylfs06/LABS/kempner_fellow_binxuwang/Users/binxuwang/Data',
+            train=True, download=False,
+            transform=transforms.Compose([
+                transforms.ToTensor()
+            ])
+        )
+        imgsize = 32
+        imgchannels = 3
+        Xtsr_raw = torch.stack([cifar100_train[k][0] for k in range(len(cifar100_train))])
+        label_vec = [cifar100_train[k][1] for k in range(len(cifar100_train))]
     elif dataset_name == "afhq-32x32":
         Xtsr_raw = torch.load(join(word_dataset_root, "afhq-32x32.pt"))
         imgsize = 32
+        imgchannels = 3
     elif dataset_name == "ffhq-32x32":
         Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32.pt"))
         imgsize = 32
+        imgchannels = 3
     elif dataset_name == "ffhq-32x32-fix_words":
         Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32-fixed_text.pt"))
         imgsize = 32
+        imgchannels = 3
     elif dataset_name == "ffhq-32x32-random_word_jitter":
         Xtsr_raw = torch.load(join(word_dataset_root, "ffhq-32x32-random_word_jitter1-4.pt"))
         imgsize = 32
+        imgchannels = 3
+    elif dataset_name == "LSUN_church-64x64":
+        data_tsr = np.load(join(dataset_root, "LSUN_church", "church_outdoor_train_lmdb_color_64.npy"))
+        # data_tsr shape: (126227, 64, 64, 3) numpy array uint8. 
+        # Convert to float32 and normalize to [0, 1]
+        data_tsr_torch = torch.from_numpy(data_tsr).permute(0, 3, 1, 2).float() / 255.0  # (N, H, W, C) -> (N, C, H, W)
+        del data_tsr # free memory
+        imgsize = 64
+        imgchannels = 3
+        Xtsr_raw = data_tsr_torch
+    elif dataset_name == "LSUN_church-32x32":
+        Xtsr_raw = torch.load(join(dataset_root, "LSUN_church", "church_train_32x32.pt"), weights_only=True)
+        imgsize = 32
+        imgchannels = 3
     print(f"{dataset_name} dataset: {Xtsr_raw.shape}")
-    print(f"Raw value range" , (Xtsr_raw[0].max().item()), (Xtsr_raw[0].min().item()))
+    print(f"imgchannels: {imgchannels}, imgsize: {imgsize}")
+    assert Xtsr_raw.shape[1] == imgchannels
+    assert Xtsr_raw.shape[2] == imgsize
+    assert Xtsr_raw.shape[3] == imgsize
+    print(f"Raw value range" , (Xtsr_raw[:].max().item()), (Xtsr_raw[:].min().item()))
     if normalize:
         print("Normalizing dataset to [-1.0, 1.0]")
         Xtsr = (Xtsr_raw - 0.5) / 0.5
     else:
         Xtsr = Xtsr_raw
-    return Xtsr, imgsize
+    if return_channels:
+        return Xtsr, imgsize, imgchannels
+    else:
+        return Xtsr, imgsize
 
 
 def select_dataset_subset(Xtsr_raw, start_idx=None, end_idx=None, step_idx=None):
