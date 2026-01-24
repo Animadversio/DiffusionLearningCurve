@@ -52,6 +52,35 @@ def sweep_and_create_sample_store(sampledir):
     return sample_store
 
 
+def sweep_and_create_sample_store_custom_pattern(sampledir, pattern="latents_epoch_*.pt", ):
+    """
+    Sweeps through the sample directory and loads samples.
+
+    Args:
+        sampledir (str): Directory containing sample files.
+        pattern (str): Glob pattern for sample files.
+        regex_pattern (str): Regular expression pattern for extracting the epoch number.
+
+    Returns:
+        dict: Dictionary with epochs as keys and loaded samples as values.
+    """
+    sample_paths = sorted(
+        glob(join(sampledir, pattern)), 
+        key=lambda x: int(re.findall(r'\d+', x)[0]) if re.findall(r'\d+', x) else -1
+    )
+    sample_store = {}
+    regex_pattern = pattern.replace("*", r"(\d+)").replace(".", r"\.")
+    print(f"regex_pattern: {regex_pattern}")
+    for sample_path in tqdm(sample_paths):
+        filename = os.path.basename(sample_path)
+        match = re.match(regex_pattern, filename)
+        if match:
+            epoch = int(match.group(1))
+            sample_store[epoch] = torch.load(sample_path)
+        else:
+            print(f"Warning: could not extract epoch from filename: {filename} (pattern: {regex_pattern})")
+    return sample_store
+
 
 def process_img_mean_cov_statistics(train_images, sample_store, savedir, device="cuda", imgshape=(3, 64, 64), save_pkl=True):
     img_shape = train_images.shape[1:]
