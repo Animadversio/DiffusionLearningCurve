@@ -268,6 +268,7 @@ def parse_args():
     parser.add_argument("--dset_start", type=int, default=None, help="Start index for dataset subset selection")
     parser.add_argument("--dset_end", type=int, default=None, help="End index for dataset subset selection")
     parser.add_argument("--dset_step", type=int, default=None, help="Step size for dataset subset selection")
+    parser.add_argument("--dset_idx_json", type=str, default="", help="JSON file containing dataset subset indices")
     return parser.parse_args()
 
 # %%
@@ -340,7 +341,14 @@ os.makedirs(ckpt_dir, exist_ok=True)
 # Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name)
 from core.dataset_lib import load_dataset
 Xtsr_raw, imgsize, imgchannels = load_dataset(dataset_name, normalize=False, return_channels=True)
-Xtsr_raw = select_dataset_subset(Xtsr_raw, 
+if args.dset_idx_json is not None:
+    with open(args.dset_idx_json, 'r') as f:
+        dset_idx = json.load(f)
+    dset_idx = np.array(dset_idx)
+    print(f"using dataset subset indices from {args.dset_idx_json} N={len(dset_idx)}")
+    Xtsr_raw = Xtsr_raw[dset_idx]
+else:
+    Xtsr_raw = select_dataset_subset(Xtsr_raw, 
                                  start_idx=args.dset_start,
                                  end_idx=args.dset_end, 
                                  step_idx=args.dset_step)
